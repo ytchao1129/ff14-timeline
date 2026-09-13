@@ -89,6 +89,12 @@ function sortByTime(entries: SkillEntry[]): SkillEntry[] {
   return [...entries].sort((a, b) => a.timeSec - b.timeSec)
 }
 
+function toSkillEntry(id: string, values: SkillEntryValues): SkillEntry {
+  const entry: SkillEntry = { id, timeSec: values.timeSec, label: values.label }
+  if (values.skillId) entry.skillId = values.skillId
+  return entry
+}
+
 function updatePlayer(
   encounter: Encounter,
   playerId: string,
@@ -106,7 +112,7 @@ export function addSkillEntry(
   values: SkillEntryValues,
   id = createId(),
 ): Encounter {
-  const entry: SkillEntry = { id, timeSec: values.timeSec, label: values.label }
+  const entry = toSkillEntry(id, values)
   return updatePlayer(encounter, playerId, (p) => ({
     ...p,
     entries: sortByTime([...p.entries, entry]),
@@ -121,11 +127,7 @@ export function updateSkillEntry(
 ): Encounter {
   return updatePlayer(encounter, playerId, (p) => ({
     ...p,
-    entries: sortByTime(
-      p.entries.map((e) =>
-        e.id === id ? { ...e, timeSec: values.timeSec, label: values.label } : e,
-      ),
-    ),
+    entries: sortByTime(p.entries.map((e) => (e.id === id ? toSkillEntry(e.id, values) : e))),
   }))
 }
 
@@ -133,5 +135,29 @@ export function removeSkillEntry(encounter: Encounter, playerId: string, id: str
   return updatePlayer(encounter, playerId, (p) => ({
     ...p,
     entries: p.entries.filter((e) => e.id !== id),
+  }))
+}
+
+type SkillValidator = (skillId: string) => boolean
+
+export function countInvalidSkillEntries(player: PlayerPlan, isValidSkill: SkillValidator): number {
+  return player.entries.filter((e) => e.skillId && !isValidSkill(e.skillId)).length
+}
+
+/** Changes the job; entries whose skill is unavailable keep their name as custom entries. */
+export function setPlayerJob(
+  encounter: Encounter,
+  playerId: string,
+  job: string,
+  isValidSkill: SkillValidator,
+): Encounter {
+  return updatePlayer(encounter, playerId, (p) => ({
+    ...p,
+    job,
+    entries: p.entries.map((e) =>
+      e.skillId && !isValidSkill(e.skillId)
+        ? toSkillEntry(e.id, { timeSec: e.timeSec, label: e.label })
+        : e,
+    ),
   }))
 }

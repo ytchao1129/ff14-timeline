@@ -1,4 +1,5 @@
 import { PREPULL_SEC } from '../types/timeline'
+import type { SkillDef } from '../types/timeline'
 import { parseTimeInput } from './timeInput'
 import { formatTime } from './timeScale'
 
@@ -108,17 +109,22 @@ export function validateBossActionInput(
 
 export interface SkillEntryInput {
   time: string
+  /** Empty string means a custom name typed by the user. */
+  skillId: string
   label: string
 }
 
 export interface SkillEntryValues {
   timeSec: number
   label: string
+  skillId?: string
 }
 
+/** `skills` are the skills available to the player's job. */
 export function validateSkillEntryInput(
   input: SkillEntryInput,
   durationSec: number,
+  skills: SkillDef[] = [],
 ): FormResult<SkillEntryValues, keyof SkillEntryInput> {
   const errors: FieldErrors<keyof SkillEntryInput> = {}
 
@@ -131,10 +137,24 @@ export function validateSkillEntryInput(
     errors.time = `不得晚於副本結束（${formatTime(durationSec)}）`
   }
 
-  const label = input.label.trim()
-  if (!label) errors.label = '請輸入技能名稱'
-  else if (label.length > MAX_NAME_LENGTH) errors.label = `不得超過 ${MAX_NAME_LENGTH} 字`
+  let label = input.label.trim()
+  let skillId: string | undefined
+  if (input.skillId) {
+    const skill = skills.find((s) => s.id === input.skillId)
+    if (skill) {
+      label = skill.name
+      skillId = skill.id
+    } else {
+      errors.skillId = '所選技能不屬於目前職業'
+    }
+  } else if (!label) {
+    errors.label = '請輸入技能名稱'
+  } else if (label.length > MAX_NAME_LENGTH) {
+    errors.label = `不得超過 ${MAX_NAME_LENGTH} 字`
+  }
 
   if (timeSec === null || Object.keys(errors).length > 0) return { ok: false, errors }
-  return { ok: true, value: { timeSec, label } }
+  const value: SkillEntryValues = { timeSec, label }
+  if (skillId) value.skillId = skillId
+  return { ok: true, value }
 }

@@ -6,11 +6,13 @@ import {
   addBossAction,
   addPlayer,
   addSkillEntry,
+  countInvalidSkillEntries,
   createEncounter,
   formatCastLength,
   latestUsedSec,
   removeBossAction,
   removeSkillEntry,
+  setPlayerJob,
   updateBossAction,
   updateEncounterInfo,
   updateSkillEntry,
@@ -144,18 +146,35 @@ describe('skill entry operations', () => {
     expect(encounter.players[1]).toBe(second)
   })
 
-  it('updates an entry, re-sorts, and keeps other fields', () => {
+  it('updates an entry, re-sorts, and sets or clears the skill id', () => {
     let encounter = twoPlayers()
     const playerId = encounter.players[0].id
-    encounter = addSkillEntry(encounter, playerId, { timeSec: 10, label: 'A' }, 'a')
+    encounter = addSkillEntry(
+      encounter,
+      playerId,
+      { timeSec: 10, label: 'A', skillId: 'skill-1' },
+      'a',
+    )
     encounter = addSkillEntry(encounter, playerId, { timeSec: 20, label: 'B' }, 'b')
-    encounter.players[0].entries[0].skillId = 'skill-1'
+    expect(encounter.players[0].entries[0].skillId).toBe('skill-1')
 
-    const updated = updateSkillEntry(encounter, playerId, 'a', { timeSec: 40, label: 'A2' })
-    expect(updated.players[0].entries).toEqual([
+    const custom = updateSkillEntry(encounter, playerId, 'a', { timeSec: 40, label: 'A2' })
+    expect(custom.players[0].entries).toEqual([
       { id: 'b', timeSec: 20, label: 'B' },
-      { id: 'a', timeSec: 40, label: 'A2', skillId: 'skill-1' },
+      { id: 'a', timeSec: 40, label: 'A2' },
     ])
+
+    const picked = updateSkillEntry(custom, playerId, 'b', {
+      timeSec: 20,
+      label: 'S',
+      skillId: 'skill-2',
+    })
+    expect(picked.players[0].entries[0]).toEqual({
+      id: 'b',
+      timeSec: 20,
+      label: 'S',
+      skillId: 'skill-2',
+    })
   })
 
   it('removes an entry and keeps the result valid', () => {
@@ -172,5 +191,26 @@ describe('skill entry operations', () => {
     const encounter = twoPlayers()
     const updated = addSkillEntry(encounter, 'missing', { timeSec: 1, label: 'A' })
     expect(updated.players).toEqual(encounter.players)
+  })
+})
+
+describe('setPlayerJob', () => {
+  it('changes the job and turns unavailable skills into custom entries', () => {
+    let encounter = emptyEncounter()
+    const playerId = encounter.players[0].id
+    encounter = addSkillEntry(encounter, playerId, { timeSec: 1, label: '鐵壁', skillId: 'keep' }, 'a')
+    encounter = addSkillEntry(encounter, playerId, { timeSec: 2, label: '死鬥', skillId: 'drop' }, 'b')
+    encounter = addSkillEntry(encounter, playerId, { timeSec: 3, label: '自訂' }, 'c')
+    const isValid = (id: string) => id === 'keep'
+
+    expect(countInvalidSkillEntries(encounter.players[0], isValid)).toBe(1)
+
+    const updated = setPlayerJob(encounter, playerId, 'WAR', isValid)
+    expect(updated.players[0].job).toBe('WAR')
+    expect(updated.players[0].entries).toEqual([
+      { id: 'a', timeSec: 1, label: '鐵壁', skillId: 'keep' },
+      { id: 'b', timeSec: 2, label: '死鬥' },
+      { id: 'c', timeSec: 3, label: '自訂' },
+    ])
   })
 })

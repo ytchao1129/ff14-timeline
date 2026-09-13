@@ -1,0 +1,65 @@
+// Based on patch 7.x at level 100. Checked by the user: WHM and SCH names,
+// AST Synastry name, and the values noted in PLAN.md. Other entries are unverified.
+import type { SkillDef } from '../../types/timeline'
+import { defineSkills } from './define'
+
+export const HEALER_SKILLS: Record<string, SkillDef[]> = {
+  WHM: defineSkills('WHM', [
+    ['節制', 'Temperance', 'party', 120, { durationSec: 20 }],
+    ['禮儀之鈴', 'Liturgy of the Bell', 'heal', 180, { durationSec: 20 }],
+    ['庇護所', 'Asylum', 'heal', 90, { durationSec: 24 }],
+    ['全大赦', 'Plenary Indulgence', 'heal', 60, { durationSec: 10 }],
+    ['天賜祝福', 'Benediction', 'heal', 180],
+    ['神名', 'Tetragrammaton', 'heal', 60, { charges: 2 }],
+    ['法令', 'Assize', 'heal', 40],
+    ['神祝祷', 'Divine Benison', 'mitigation', 30, { durationSec: 15, charges: 2 }],
+    ['水流幕', 'Aquaveil', 'mitigation', 60, { durationSec: 8 }],
+    ['神速詠唱', 'Presence of Mind', 'buff', 120, { durationSec: 15 }],
+    ['無中生有', 'Thin Air', 'utility', 60, { charges: 2 }],
+  ]),
+  SCH: defineSkills('SCH', [
+    ['疾風怒濤之計', 'Expedient', 'party', 120, { durationSec: 20 }],
+    ['野戰治療陣', 'Sacred Soil', 'party', 30, { durationSec: 15 }],
+    ['異想的幻光', 'Fey Illumination', 'party', 120, { durationSec: 20 }],
+    ['展開戰術', 'Deployment Tactics', 'party', 90],
+    ['仙光的低語', 'Whispering Dawn', 'heal', 60, { durationSec: 21 }],
+    ['熾天附體', 'Seraphism', 'heal', 180, { durationSec: 20 }],
+    ['熾天召喚', 'Summon Seraph', 'heal', 120, { durationSec: 22 }],
+    ['生命回生法', 'Protraction', 'heal', 60, { durationSec: 10 }],
+    ['秘策', 'Recitation', 'heal', 60, { durationSec: 15 }],
+    ['深謀遠慮之策', 'Excogitation', 'heal', 45, { durationSec: 45 }],
+    ['連環計', 'Chain Stratagem', 'buff', 120, { durationSec: 20 }],
+    ['以太超流', 'Aetherflow', 'utility', 60],
+    ['轉化', 'Dissipation', 'utility', 180, { durationSec: 30 }],
+  ]),
+  AST: defineSkills('AST', [
+    ['中間學派', 'Neutral Sect', 'party', 120, { durationSec: 20 }],
+    ['命運之輪', 'Collective Unconscious', 'party', 60],
+    ['大宇宙', 'Macrocosmos', 'heal', 180, { durationSec: 15 }],
+    ['地星', 'Earthly Star', 'heal', 60, { durationSec: 20 }],
+    ['天星衝日', 'Celestial Opposition', 'heal', 60, { durationSec: 15 }],
+    // 10s by default; extended to 30s by Helios or Aspected Helios.
+    ['天宮圖', 'Horoscope', 'heal', 60, { durationSec: 10 }],
+    ['先天稟賦', 'Essential Dignity', 'heal', 40, { charges: 3 }],
+    ['星位合圖', 'Synastry', 'heal', 120, { durationSec: 20 }],
+    ['擢升', 'Exaltation', 'mitigation', 60, { durationSec: 8 }],
+    ['天星交錯', 'Celestial Intersection', 'mitigation', 30, { durationSec: 30, charges: 2 }],
+    ['占卜', 'Divination', 'buff', 120, { durationSec: 20 }],
+    ['光速', 'Lightspeed', 'utility', 60, { durationSec: 15, charges: 2 }],
+  ]),
+  SGE: defineSkills('SGE', [
+    ['堅角清汁', 'Kerachole', 'party', 30, { durationSec: 15 }],
+    // Mitigation lasts 20s; the shield lasts 30s.
+    ['整體論', 'Holos', 'party', 120, { durationSec: 20 }],
+    ['泛輸血', 'Panhaima', 'party', 120, { durationSec: 15 }],
+    ['輸血', 'Haima', 'mitigation', 120, { durationSec: 15 }],
+    ['白牛清汁', 'Taurochole', 'mitigation', 45, { durationSec: 15 }],
+    ['自生 II', 'Physis II', 'heal', 60, { durationSec: 15 }],
+    ['寄生清汁', 'Ixochole', 'heal', 30],
+    ['拯救', 'Soteria', 'heal', 60, { durationSec: 15 }],
+    ['混合', 'Krasis', 'heal', 60, { durationSec: 10 }],
+    ['活化', 'Zoe', 'heal', 90, { durationSec: 30 }],
+    ['智慧之愛', 'Philosophia', 'heal', 180, { durationSec: 20 }],
+    ['根素', 'Rhizomata', 'utility', 90],
+  ]),
+}

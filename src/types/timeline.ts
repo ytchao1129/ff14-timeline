@@ -52,10 +52,17 @@ export interface Encounter {
   players: PlayerPlan[]
 }
 
+export const SKILL_CATEGORIES = ['mitigation', 'party', 'heal', 'buff', 'utility'] as const
+export type SkillCategory = (typeof SKILL_CATEGORIES)[number]
+
 export interface SkillDef {
   id: string
+  /** Job abbreviation, or "role-tank" / "role-healer" for shared role actions. */
   job: string
   name: string
+  /** English name, kept to make checking the data against the game easier. */
+  nameEn: string
+  category: SkillCategory
   recastSec: number
   durationSec?: number
   charges?: number

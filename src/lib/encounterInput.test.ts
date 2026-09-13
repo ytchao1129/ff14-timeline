@@ -89,38 +89,64 @@ describe('validateBossActionInput', () => {
 })
 
 describe('validateSkillEntryInput', () => {
+  const entry = (time: string, label: string, skillId = '') => ({ time, label, skillId })
+  const skills = [
+    {
+      id: 'pld-rampart',
+      job: 'PLD',
+      name: '鐵壁',
+      nameEn: 'Rampart',
+      category: 'mitigation' as const,
+      recastSec: 90,
+    },
+  ]
+
   it('accepts a trimmed label and a prepull time', () => {
-    expect(validateSkillEntryInput({ time: '-0:10', label: ' 開場盾 ' }, 600)).toEqual({
+    expect(validateSkillEntryInput(entry('-0:10', ' 開場盾 '), 600)).toEqual({
       ok: true,
       value: { timeSec: -10, label: '開場盾' },
     })
   })
 
   it('accepts the earliest prepull time and the encounter end', () => {
-    expect(validateSkillEntryInput({ time: '-16', label: 'A' }, 600).ok).toBe(true)
-    expect(validateSkillEntryInput({ time: '10:00', label: 'A' }, 600).ok).toBe(true)
+    expect(validateSkillEntryInput(entry('-16', 'A'), 600).ok).toBe(true)
+    expect(validateSkillEntryInput(entry('10:00', 'A'), 600).ok).toBe(true)
   })
 
   it('rejects times outside the timeline', () => {
-    expect(validateSkillEntryInput({ time: '-17', label: 'A' }, 600)).toMatchObject({
+    expect(validateSkillEntryInput(entry('-17', 'A'), 600)).toMatchObject({
       ok: false,
       errors: { time: expect.stringContaining('-0:16') },
     })
-    expect(validateSkillEntryInput({ time: '10:01', label: 'A' }, 600)).toMatchObject({
+    expect(validateSkillEntryInput(entry('10:01', 'A'), 600)).toMatchObject({
       ok: false,
       errors: { time: expect.stringContaining('10:00') },
     })
   })
 
   it('requires both fields', () => {
-    expect(validateSkillEntryInput({ time: '', label: ' ' }, 600)).toEqual({
+    expect(validateSkillEntryInput(entry('', ' '), 600)).toEqual({
       ok: false,
       errors: { time: '請輸入使用時間', label: '請輸入技能名稱' },
     })
   })
 
   it('rejects a malformed time', () => {
-    const result = validateSkillEntryInput({ time: '1:99', label: 'A' }, 600)
+    const result = validateSkillEntryInput(entry('1:99', 'A'), 600)
     expect(result).toMatchObject({ ok: false, errors: { time: expect.stringContaining('格式錯誤') } })
+  })
+
+  it('uses the skill name when a skill is picked', () => {
+    expect(validateSkillEntryInput(entry('0:10', 'ignored', 'pld-rampart'), 600, skills)).toEqual({
+      ok: true,
+      value: { timeSec: 10, label: '鐵壁', skillId: 'pld-rampart' },
+    })
+  })
+
+  it('rejects a skill that is not available for the job', () => {
+    expect(validateSkillEntryInput(entry('0:10', '', 'war-holmgang'), 600, skills)).toEqual({
+      ok: false,
+      errors: { skillId: '所選技能不屬於目前職業' },
+    })
   })
 })

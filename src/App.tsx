@@ -6,15 +6,18 @@ import { EncounterForm } from './components/EncounterForm'
 import { SkillEntryTable } from './components/SkillEntryTable'
 import { TimelineView } from './components/TimelineView'
 import { createSampleEncounter } from './data/sample'
+import { getSkillsForJob } from './data/skills'
 import { useEncounters } from './hooks/useEncounters'
 import {
   addBossAction,
   addPlayer,
   addSkillEntry,
+  countInvalidSkillEntries,
   createEncounter,
   latestUsedSec,
   removeBossAction,
   removeSkillEntry,
+  setPlayerJob,
   updateBossAction,
   updateEncounterInfo,
   updateSkillEntry,
@@ -251,8 +254,25 @@ function App() {
                 player={player}
                 index={index}
                 durationSec={selected.durationSec}
+                skills={getSkillsForJob(player.job)}
                 editor={playerEditor(player.id)}
                 onEditorChange={setPlayerEditor(player.id)}
+                onJobChange={(job) => {
+                  if (job === player.job) return
+                  const available = new Set(getSkillsForJob(job).map((s) => s.id))
+                  const isValid = (skillId: string) => available.has(skillId)
+                  const affected = countInvalidSkillEntries(player, isValid)
+                  if (
+                    affected > 0 &&
+                    !window.confirm(
+                      `有 ${affected} 個技能不屬於新職業，切換後會保留名稱並改為自訂技能。確定要切換嗎？`,
+                    )
+                  ) {
+                    return
+                  }
+                  updateEncounter(selected.id, (e) => setPlayerJob(e, player.id, job, isValid))
+                  if (editor?.target === 'player' && editor.playerId === player.id) setEditor(null)
+                }}
                 onAdd={(values) => {
                   updateEncounter(selected.id, (e) => addSkillEntry(e, player.id, values))
                   setEditor(null)
