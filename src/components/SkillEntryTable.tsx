@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { JOBS, ROLES, ROLE_LABELS, findJob } from '../data/jobs'
 import { describeRecast } from '../data/skills'
 import { useScrollIntoView } from '../hooks/useScrollIntoView'
@@ -25,6 +24,8 @@ interface SkillEntryTableProps {
   onUpdate: (id: string, values: SkillEntryValues) => void
   onRemove: (entry: SkillEntry) => void
   onRemovePlayer: () => void
+  collapsed: boolean
+  onToggleCollapsed: () => void
 }
 
 export function SkillEntryTable({
@@ -39,8 +40,9 @@ export function SkillEntryTable({
   onUpdate,
   onRemove,
   onRemovePlayer,
+  collapsed,
+  onToggleCollapsed,
 }: SkillEntryTableProps) {
-  const [collapsed, setCollapsed] = useState(false)
   // An open form (e.g. from clicking the timeline) always shows the table.
   const expanded = !collapsed || editor !== null
   const addRowId = `skill-entry-new-${player.id}`
@@ -79,7 +81,7 @@ export function SkillEntryTable({
         <div className="panel-header-buttons">
           <button
             type="button"
-            onClick={() => setCollapsed(expanded)}
+            onClick={onToggleCollapsed}
             disabled={editor !== null}
             aria-expanded={expanded}
           >

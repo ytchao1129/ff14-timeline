@@ -49,8 +49,23 @@ function App() {
   const [creatingEncounter, setCreatingEncounter] = useState(false)
   const [editingInfo, setEditingInfo] = useState(false)
   const [editor, setEditor] = useState<Editor>(null)
+  const [bossCollapsed, setBossCollapsed] = useState(false)
+  const [collapsedPlayerIds, setCollapsedPlayerIds] = useState<ReadonlySet<string>>(new Set())
 
   const selected = encounters.find((e) => e.id === selectedId) ?? encounters[0]
+
+  const allPlayersCollapsed =
+    selected !== undefined &&
+    selected.players.length > 0 &&
+    selected.players.every((p) => collapsedPlayerIds.has(p.id))
+  const togglePlayerCollapsed = (playerId: string) => {
+    setCollapsedPlayerIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(playerId)) next.delete(playerId)
+      else next.add(playerId)
+      return next
+    })
+  }
 
   const bossEditor = editor?.target === 'boss' ? editor.state : null
   const setBossEditor = (state: ActionEditor) => {
@@ -233,6 +248,8 @@ function App() {
               updateEncounter(selected.id, (e) => removeBossAction(e, action.id))
               if (isEditing(action.id)) setEditor(null)
             }}
+            collapsed={bossCollapsed}
+            onToggleCollapsed={() => setBossCollapsed((c) => !c)}
           />
 
           <div className="players-header">
@@ -240,14 +257,27 @@ function App() {
             <span className="muted">
               {selected.players.length} / {MAX_PLAYERS} 位
             </span>
-            <button
-              type="button"
-              className="primary panel-header-action"
-              onClick={() => updateEncounter(selected.id, addPlayer)}
-              disabled={selected.players.length >= MAX_PLAYERS}
-            >
-              新增玩家
-            </button>
+            <div className="panel-header-buttons">
+              <button
+                type="button"
+                onClick={() =>
+                  setCollapsedPlayerIds(
+                    allPlayersCollapsed ? new Set() : new Set(selected.players.map((p) => p.id)),
+                  )
+                }
+                disabled={selected.players.length === 0}
+              >
+                {allPlayersCollapsed ? '全部展開' : '全部收合'}
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => updateEncounter(selected.id, addPlayer)}
+                disabled={selected.players.length >= MAX_PLAYERS}
+              >
+                新增玩家
+              </button>
+            </div>
           </div>
           {selected.players.length === 0 && (
             <p className="empty">尚無玩家軌道，按「新增玩家」開始。</p>
@@ -257,6 +287,8 @@ function App() {
                 key={player.id}
                 player={player}
                 index={index}
+                collapsed={collapsedPlayerIds.has(player.id)}
+                onToggleCollapsed={() => togglePlayerCollapsed(player.id)}
                 durationSec={selected.durationSec}
                 skills={getSkillsForJob(player.job)}
                 editor={playerEditor(player.id)}
