@@ -1,3 +1,4 @@
+import { PREPULL_SEC } from '../types/timeline'
 import { parseTimeInput } from './timeInput'
 import { formatTime } from './timeScale'
 
@@ -29,7 +30,7 @@ export interface EncounterValues {
   durationSec: number
 }
 
-/** `minDurationSec` keeps existing boss actions inside the encounter. */
+/** `minDurationSec` keeps existing boss actions and skill entries inside the encounter. */
 export function validateEncounterInput(
   input: EncounterInput,
   minDurationSec = 0,
@@ -43,7 +44,7 @@ export function validateEncounterInput(
   } else if (durationSec <= 0) {
     errors.duration = '必須大於 0'
   } else if (durationSec < minDurationSec) {
-    errors.duration = `不得短於最後一個招式的結束時間（${formatTime(minDurationSec)}）`
+    errors.duration = `不得短於已排入的最後一個招式或技能（${formatTime(minDurationSec)}）`
   }
 
   if (durationSec === null || Object.keys(errors).length > 0) return { ok: false, errors }
@@ -103,4 +104,37 @@ export function validateBossActionInput(
   const value: BossActionValues = { name, castStartSec, castEndSec }
   if (note) value.note = note
   return { ok: true, value }
+}
+
+export interface SkillEntryInput {
+  time: string
+  label: string
+}
+
+export interface SkillEntryValues {
+  timeSec: number
+  label: string
+}
+
+export function validateSkillEntryInput(
+  input: SkillEntryInput,
+  durationSec: number,
+): FormResult<SkillEntryValues, keyof SkillEntryInput> {
+  const errors: FieldErrors<keyof SkillEntryInput> = {}
+
+  const timeSec = parseTimeInput(input.time)
+  if (timeSec === null) {
+    errors.time = input.time.trim() ? TIME_FORMAT_ERROR : '請輸入使用時間'
+  } else if (timeSec < -PREPULL_SEC) {
+    errors.time = `不得早於開打前 ${PREPULL_SEC} 秒（${formatTime(-PREPULL_SEC)}）`
+  } else if (timeSec > durationSec) {
+    errors.time = `不得晚於副本結束（${formatTime(durationSec)}）`
+  }
+
+  const label = input.label.trim()
+  if (!label) errors.label = '請輸入技能名稱'
+  else if (label.length > MAX_NAME_LENGTH) errors.label = `不得超過 ${MAX_NAME_LENGTH} 字`
+
+  if (timeSec === null || Object.keys(errors).length > 0) return { ok: false, errors }
+  return { ok: true, value: { timeSec, label } }
 }

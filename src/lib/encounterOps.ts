@@ -1,6 +1,11 @@
-import type { BossAction, Encounter } from '../types/timeline'
-import type { BossActionValues, EncounterValues } from './encounterInput'
+import { MAX_PLAYERS } from '../types/timeline'
+import type { BossAction, Encounter, PlayerPlan, SkillEntry } from '../types/timeline'
+import type { BossActionValues, EncounterValues, SkillEntryValues } from './encounterInput'
 import { createId } from './id'
+
+function createPlayerPlan(): PlayerPlan {
+  return { id: createId(), job: '', entries: [] }
+}
 
 export function createEncounter(values: EncounterValues): Encounter {
   return {
@@ -8,7 +13,7 @@ export function createEncounter(values: EncounterValues): Encounter {
     name: values.name,
     durationSec: values.durationSec,
     bossActions: [],
-    players: [{ id: createId(), job: '', entries: [] }],
+    players: [createPlayerPlan()],
   }
 }
 
@@ -16,8 +21,13 @@ export function updateEncounterInfo(encounter: Encounter, values: EncounterValue
   return { ...encounter, name: values.name, durationSec: values.durationSec }
 }
 
-export function lastBossActionEndSec(encounter: Encounter): number {
-  return Math.max(0, ...encounter.bossActions.map((a) => a.castEndSec))
+/** Latest time used by a boss action or skill entry; the duration may not be shorter. */
+export function latestUsedSec(encounter: Encounter): number {
+  return Math.max(
+    0,
+    ...encounter.bossActions.map((a) => a.castEndSec),
+    ...encounter.players.flatMap((p) => p.entries.map((e) => e.timeSec)),
+  )
 }
 
 function sortByStart(actions: BossAction[]): BossAction[] {
@@ -68,4 +78,60 @@ export function removeBossAction(encounter: Encounter, id: string): Encounter {
 export function formatCastLength(startSec: number, endSec: number): string {
   const length = Math.round((endSec - startSec) * 10) / 10
   return length === 0 ? '瞬發' : `${length} 秒`
+}
+
+export function addPlayer(encounter: Encounter): Encounter {
+  if (encounter.players.length >= MAX_PLAYERS) return encounter
+  return { ...encounter, players: [...encounter.players, createPlayerPlan()] }
+}
+
+function sortByTime(entries: SkillEntry[]): SkillEntry[] {
+  return [...entries].sort((a, b) => a.timeSec - b.timeSec)
+}
+
+function updatePlayer(
+  encounter: Encounter,
+  playerId: string,
+  recipe: (player: PlayerPlan) => PlayerPlan,
+): Encounter {
+  return {
+    ...encounter,
+    players: encounter.players.map((p) => (p.id === playerId ? recipe(p) : p)),
+  }
+}
+
+export function addSkillEntry(
+  encounter: Encounter,
+  playerId: string,
+  values: SkillEntryValues,
+  id = createId(),
+): Encounter {
+  const entry: SkillEntry = { id, timeSec: values.timeSec, label: values.label }
+  return updatePlayer(encounter, playerId, (p) => ({
+    ...p,
+    entries: sortByTime([...p.entries, entry]),
+  }))
+}
+
+export function updateSkillEntry(
+  encounter: Encounter,
+  playerId: string,
+  id: string,
+  values: SkillEntryValues,
+): Encounter {
+  return updatePlayer(encounter, playerId, (p) => ({
+    ...p,
+    entries: sortByTime(
+      p.entries.map((e) =>
+        e.id === id ? { ...e, timeSec: values.timeSec, label: values.label } : e,
+      ),
+    ),
+  }))
+}
+
+export function removeSkillEntry(encounter: Encounter, playerId: string, id: string): Encounter {
+  return updatePlayer(encounter, playerId, (p) => ({
+    ...p,
+    entries: p.entries.filter((e) => e.id !== id),
+  }))
 }

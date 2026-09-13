@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { validateBossActionInput, validateEncounterInput } from './encounterInput'
+import {
+  validateBossActionInput,
+  validateEncounterInput,
+  validateSkillEntryInput,
+} from './encounterInput'
 
 describe('validateEncounterInput', () => {
   it('accepts a name and a m:ss duration', () => {
@@ -81,5 +85,42 @@ describe('validateBossActionInput', () => {
     const result = validateBossActionInput({ ...base, start: '1:75', end: 'x' }, 600)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(Object.keys(result.errors).sort()).toEqual(['end', 'start'])
+  })
+})
+
+describe('validateSkillEntryInput', () => {
+  it('accepts a trimmed label and a prepull time', () => {
+    expect(validateSkillEntryInput({ time: '-0:10', label: ' 開場盾 ' }, 600)).toEqual({
+      ok: true,
+      value: { timeSec: -10, label: '開場盾' },
+    })
+  })
+
+  it('accepts the earliest prepull time and the encounter end', () => {
+    expect(validateSkillEntryInput({ time: '-16', label: 'A' }, 600).ok).toBe(true)
+    expect(validateSkillEntryInput({ time: '10:00', label: 'A' }, 600).ok).toBe(true)
+  })
+
+  it('rejects times outside the timeline', () => {
+    expect(validateSkillEntryInput({ time: '-17', label: 'A' }, 600)).toMatchObject({
+      ok: false,
+      errors: { time: expect.stringContaining('-0:16') },
+    })
+    expect(validateSkillEntryInput({ time: '10:01', label: 'A' }, 600)).toMatchObject({
+      ok: false,
+      errors: { time: expect.stringContaining('10:00') },
+    })
+  })
+
+  it('requires both fields', () => {
+    expect(validateSkillEntryInput({ time: '', label: ' ' }, 600)).toEqual({
+      ok: false,
+      errors: { time: '請輸入使用時間', label: '請輸入技能名稱' },
+    })
+  })
+
+  it('rejects a malformed time', () => {
+    const result = validateSkillEntryInput({ time: '1:99', label: 'A' }, 600)
+    expect(result).toMatchObject({ ok: false, errors: { time: expect.stringContaining('格式錯誤') } })
   })
 })

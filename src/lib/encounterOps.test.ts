@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { createSampleEncounter } from '../data/sample'
+import { MAX_PLAYERS } from '../types/timeline'
 import type { Encounter } from '../types/timeline'
 import {
   addBossAction,
+  addPlayer,
+  addSkillEntry,
   createEncounter,
   formatCastLength,
-  lastBossActionEndSec,
+  latestUsedSec,
   removeBossAction,
+  removeSkillEntry,
   updateBossAction,
   updateEncounterInfo,
+  updateSkillEntry,
 } from './encounterOps'
 import { parseSaveData } from './validate'
 
@@ -86,13 +91,26 @@ describe('boss action operations', () => {
     expect(updated.bossActions).toHaveLength(encounter.bossActions.length - 1)
     expect(updated.bossActions.some((a) => a.id === target.id)).toBe(false)
   })
+})
 
-  it('finds the last action end time', () => {
-    expect(lastBossActionEndSec(emptyEncounter())).toBe(0)
+describe('latestUsedSec', () => {
+  it('uses the latest boss action end or skill time', () => {
+    expect(latestUsedSec(emptyEncounter())).toBe(0)
+
     let encounter = emptyEncounter()
     encounter = addBossAction(encounter, { name: 'A', castStartSec: 50, castEndSec: 90 })
     encounter = addBossAction(encounter, { name: 'B', castStartSec: 60, castEndSec: 70 })
-    expect(lastBossActionEndSec(encounter)).toBe(90)
+    expect(latestUsedSec(encounter)).toBe(90)
+
+    const playerId = encounter.players[0].id
+    encounter = addSkillEntry(encounter, playerId, { timeSec: 120, label: 'S' })
+    expect(latestUsedSec(encounter)).toBe(120)
+  })
+
+  it('ignores prepull-only skills', () => {
+    let encounter = emptyEncounter()
+    encounter = addSkillEntry(encounter, encounter.players[0].id, { timeSec: -10, label: 'S' })
+    expect(latestUsedSec(encounter)).toBe(0)
   })
 })
 
@@ -100,5 +118,59 @@ describe('formatCastLength', () => {
   it('shows instant actions and cast lengths', () => {
     expect(formatCastLength(10, 10)).toBe('瞬發')
     expect(formatCastLength(10, 14.7)).toBe('4.7 秒')
+  })
+})
+
+describe('addPlayer', () => {
+  it('adds an empty player plan up to the maximum', () => {
+    let encounter: Encounter = { ...emptyEncounter(), players: [] }
+    for (let i = 0; i < MAX_PLAYERS + 2; i++) encounter = addPlayer(encounter)
+    expect(encounter.players).toHaveLength(MAX_PLAYERS)
+    expect(new Set(encounter.players.map((p) => p.id)).size).toBe(MAX_PLAYERS)
+  })
+})
+
+describe('skill entry operations', () => {
+  function twoPlayers(): Encounter {
+    return addPlayer(emptyEncounter())
+  }
+
+  it('adds entries sorted by time to the chosen player only', () => {
+    let encounter = twoPlayers()
+    const [first, second] = encounter.players
+    encounter = addSkillEntry(encounter, first.id, { timeSec: 30, label: 'B' }, 'b')
+    encounter = addSkillEntry(encounter, first.id, { timeSec: -5, label: 'A' }, 'a')
+    expect(encounter.players[0].entries.map((e) => e.id)).toEqual(['a', 'b'])
+    expect(encounter.players[1]).toBe(second)
+  })
+
+  it('updates an entry, re-sorts, and keeps other fields', () => {
+    let encounter = twoPlayers()
+    const playerId = encounter.players[0].id
+    encounter = addSkillEntry(encounter, playerId, { timeSec: 10, label: 'A' }, 'a')
+    encounter = addSkillEntry(encounter, playerId, { timeSec: 20, label: 'B' }, 'b')
+    encounter.players[0].entries[0].skillId = 'skill-1'
+
+    const updated = updateSkillEntry(encounter, playerId, 'a', { timeSec: 40, label: 'A2' })
+    expect(updated.players[0].entries).toEqual([
+      { id: 'b', timeSec: 20, label: 'B' },
+      { id: 'a', timeSec: 40, label: 'A2', skillId: 'skill-1' },
+    ])
+  })
+
+  it('removes an entry and keeps the result valid', () => {
+    let encounter = twoPlayers()
+    const playerId = encounter.players[0].id
+    encounter = addSkillEntry(encounter, playerId, { timeSec: 10, label: 'A' }, 'a')
+    encounter = addSkillEntry(encounter, playerId, { timeSec: 20, label: 'B' }, 'b')
+    const updated = removeSkillEntry(encounter, playerId, 'a')
+    expect(updated.players[0].entries.map((e) => e.id)).toEqual(['b'])
+    expect(parseSaveData({ version: 1, encounters: [updated] }).ok).toBe(true)
+  })
+
+  it('leaves the encounter unchanged for an unknown player', () => {
+    const encounter = twoPlayers()
+    const updated = addSkillEntry(encounter, 'missing', { timeSec: 1, label: 'A' })
+    expect(updated.players).toEqual(encounter.players)
   })
 })

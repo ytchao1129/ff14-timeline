@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useScrollIntoView } from '../hooks/useScrollIntoView'
 import type { BossActionValues } from '../lib/encounterInput'
 import { formatCastLength } from '../lib/encounterOps'
 import { formatTime } from '../lib/timeScale'
@@ -30,13 +30,7 @@ export function BossActionTable({
   onUpdate,
   onRemove,
 }: BossActionTableProps) {
-  const focusRowId = editor ? (editor.mode === 'add' ? ADD_ROW_ID : rowId(editor.id)) : null
-
-  useEffect(() => {
-    if (focusRowId) {
-      document.getElementById(focusRowId)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-    }
-  }, [focusRowId])
+  useScrollIntoView(editor ? (editor.mode === 'add' ? ADD_ROW_ID : rowId(editor.id)) : null)
 
   const cancel = () => onEditorChange(null)
 

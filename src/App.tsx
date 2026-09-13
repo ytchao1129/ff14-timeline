@@ -3,20 +3,31 @@ import type { ChangeEvent } from 'react'
 import { BossActionTable } from './components/BossActionTable'
 import type { ActionEditor } from './components/BossActionTable'
 import { EncounterForm } from './components/EncounterForm'
+import { SkillEntryTable } from './components/SkillEntryTable'
 import { TimelineView } from './components/TimelineView'
 import { createSampleEncounter } from './data/sample'
 import { useEncounters } from './hooks/useEncounters'
 import {
   addBossAction,
+  addPlayer,
+  addSkillEntry,
   createEncounter,
-  lastBossActionEndSec,
+  latestUsedSec,
   removeBossAction,
+  removeSkillEntry,
   updateBossAction,
   updateEncounterInfo,
+  updateSkillEntry,
 } from './lib/encounterOps'
 import { formatTime } from './lib/timeScale'
 import { downloadTextFile, exportFileName, serializeExport } from './lib/transfer'
 import type { Encounter } from './types/timeline'
+
+/** Only one add/edit form is open at a time, either for the boss or for one player. */
+type Editor =
+  | { target: 'boss'; state: NonNullable<ActionEditor> }
+  | { target: 'player'; playerId: string; state: NonNullable<ActionEditor> }
+  | null
 
 function App() {
   const {
@@ -32,14 +43,25 @@ function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creatingEncounter, setCreatingEncounter] = useState(false)
   const [editingInfo, setEditingInfo] = useState(false)
-  const [actionEditor, setActionEditor] = useState<ActionEditor>(null)
+  const [editor, setEditor] = useState<Editor>(null)
 
   const selected = encounters.find((e) => e.id === selectedId) ?? encounters[0]
+
+  const bossEditor = editor?.target === 'boss' ? editor.state : null
+  const setBossEditor = (state: ActionEditor) => {
+    setEditor(state ? { target: 'boss', state } : null)
+  }
+  const playerEditor = (playerId: string) =>
+    editor?.target === 'player' && editor.playerId === playerId ? editor.state : null
+  const setPlayerEditor = (playerId: string) => (state: ActionEditor) => {
+    setEditor(state ? { target: 'player', playerId, state } : null)
+  }
+  const isEditing = (id: string) => editor?.state.mode === 'edit' && editor.state.id === id
 
   const selectEncounter = (id: string) => {
     setSelectedId(id)
     setEditingInfo(false)
-    setActionEditor(null)
+    setEditor(null)
   }
 
   const addAndSelect = (encounter: Encounter) => {
@@ -66,7 +88,7 @@ function App() {
     removeEncounter(encounter.id)
     if (encounter === selected) {
       setEditingInfo(false)
-      setActionEditor(null)
+      setEditor(null)
     }
   }
 
@@ -155,7 +177,7 @@ function App() {
                 <h2>編輯副本資訊</h2>
                 <EncounterForm
                   initial={selected}
-                  minDurationSec={lastBossActionEndSec(selected)}
+                  minDurationSec={latestUsedSec(selected)}
                   submitLabel="儲存"
                   onSubmit={(values) => {
                     updateEncounter(selected.id, (e) => updateEncounterInfo(e, values))
@@ -181,30 +203,72 @@ function App() {
 
           <TimelineView
             encounter={selected}
-            selectedBossActionId={actionEditor?.mode === 'edit' ? actionEditor.id : null}
-            onBossActionClick={(id) => setActionEditor({ mode: 'edit', id })}
+            selectedBossActionId={bossEditor?.mode === 'edit' ? bossEditor.id : null}
+            onBossActionClick={(id) => setBossEditor({ mode: 'edit', id })}
+            selectedSkillEntryId={
+              editor?.target === 'player' && editor.state.mode === 'edit' ? editor.state.id : null
+            }
+            onSkillEntryClick={(playerId, id) => setPlayerEditor(playerId)({ mode: 'edit', id })}
           />
 
           <BossActionTable
             encounter={selected}
-            editor={actionEditor}
-            onEditorChange={setActionEditor}
+            editor={bossEditor}
+            onEditorChange={setBossEditor}
             onAdd={(values) => {
               updateEncounter(selected.id, (e) => addBossAction(e, values))
-              setActionEditor(null)
+              setEditor(null)
             }}
             onUpdate={(id, values) => {
               updateEncounter(selected.id, (e) => updateBossAction(e, id, values))
-              setActionEditor(null)
+              setEditor(null)
             }}
             onRemove={(action) => {
               if (!window.confirm(`確定要刪除招式「${action.name}」嗎？`)) return
               updateEncounter(selected.id, (e) => removeBossAction(e, action.id))
-              if (actionEditor?.mode === 'edit' && actionEditor.id === action.id) {
-                setActionEditor(null)
-              }
+              if (isEditing(action.id)) setEditor(null)
             }}
           />
+
+          {selected.players.length === 0 ? (
+            <section className="panel">
+              <div className="panel-header">
+                <h2>玩家技能</h2>
+                <span className="muted">尚無玩家軌道</span>
+                <button
+                  type="button"
+                  className="primary panel-header-action"
+                  onClick={() => updateEncounter(selected.id, addPlayer)}
+                >
+                  新增玩家軌道
+                </button>
+              </div>
+            </section>
+          ) : (
+            selected.players.map((player, index) => (
+              <SkillEntryTable
+                key={player.id}
+                player={player}
+                index={index}
+                durationSec={selected.durationSec}
+                editor={playerEditor(player.id)}
+                onEditorChange={setPlayerEditor(player.id)}
+                onAdd={(values) => {
+                  updateEncounter(selected.id, (e) => addSkillEntry(e, player.id, values))
+                  setEditor(null)
+                }}
+                onUpdate={(id, values) => {
+                  updateEncounter(selected.id, (e) => updateSkillEntry(e, player.id, id, values))
+                  setEditor(null)
+                }}
+                onRemove={(entry) => {
+                  if (!window.confirm(`確定要刪除技能「${entry.label}」嗎？`)) return
+                  updateEncounter(selected.id, (e) => removeSkillEntry(e, player.id, entry.id))
+                  if (isEditing(entry.id)) setEditor(null)
+                }}
+              />
+            ))
+          )}
         </>
       )}
     </main>

@@ -73,12 +73,16 @@ interface TimelineViewProps {
   encounter: Encounter
   selectedBossActionId?: string | null
   onBossActionClick?: (id: string) => void
+  selectedSkillEntryId?: string | null
+  onSkillEntryClick?: (playerId: string, entryId: string) => void
 }
 
 export function TimelineView({
   encounter,
   selectedBossActionId = null,
   onBossActionClick,
+  selectedSkillEntryId = null,
+  onSkillEntryClick,
 }: TimelineViewProps) {
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -235,14 +239,19 @@ export function TimelineView({
                 zeroPx={zeroPx}
               >
                 {layout.items.map(({ entry, leftPx, lane }) => (
-                  <div
+                  <button
                     key={entry.id}
-                    className="skill-marker"
+                    type="button"
+                    className={
+                      entry.id === selectedSkillEntryId ? 'skill-marker selected' : 'skill-marker'
+                    }
                     style={{ left: leftPx, top: laneTop(lane) }}
                     title={`${entry.label}\n${formatTime(entry.timeSec)}`}
+                    aria-pressed={entry.id === selectedSkillEntryId}
+                    onClick={() => onSkillEntryClick?.(player.id, entry.id)}
                   >
                     <span className="timeline-label">{entry.label}</span>
-                  </div>
+                  </button>
                 ))}
               </TimelineRow>
             )
