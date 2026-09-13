@@ -19,6 +19,12 @@
   --player-effect: rgba(9, 105, 218, 0.14);
   --cooldown: #8c959f;
   --danger-bg: #ffebe9;
+  --physical: #bc4c00;
+  --physical-bg: #fff1e5;
+  --magical: #8250df;
+  --magical-bg: #fbefff;
+  --unique: #57606a;
+  --unique-bg: #eaeef2;
 
   --sans: system-ui, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
   --mono: ui-monospace, Consolas, monospace;
@@ -51,6 +57,12 @@
     --player-effect: rgba(68, 147, 248, 0.2);
     --cooldown: #6e7681;
     --danger-bg: #3d1a1c;
+    --physical: #f0883e;
+    --physical-bg: #3d2410;
+    --magical: #a371f7;
+    --magical-bg: #2b1d45;
+    --unique: #8b949e;
+    --unique-bg: #262a31;
   }
 }
 
@@ -303,6 +315,81 @@ h2 {
   font-size: 13px;
 }
 
+/* Boss action damage types */
+
+.damage-physical {
+  --action-color: var(--physical);
+  --action-bg: var(--physical-bg);
+}
+
+.damage-magical {
+  --action-color: var(--magical);
+  --action-bg: var(--magical-bg);
+}
+
+.damage-unique {
+  --action-color: var(--unique);
+  --action-bg: var(--unique-bg);
+}
+
+.tag.damage-physical,
+.tag.damage-magical,
+.tag.damage-unique {
+  background: var(--action-bg);
+  color: var(--action-color);
+}
+
+.timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 10px;
+  border: 1px solid var(--action-color, var(--boss));
+  border-radius: 2px;
+  background: var(--action-bg, var(--boss-bg));
+}
+
+.action-form-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  grid-column: 1 / -1;
+}
+
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.inline-field select {
+  width: auto;
+}
+
+.inline-field .damage-input {
+  width: 150px;
+}
+
+.action-form-details .field-error {
+  flex-basis: 100%;
+}
+
 .tag {
   padding: 0 6px;
   border-radius: 4px;
@@ -515,9 +602,9 @@ h2 {
 .boss-cast {
   box-sizing: border-box;
   min-width: 2px;
-  border: 1px solid var(--boss);
+  border: 1px solid var(--action-color, var(--boss));
   border-radius: 4px;
-  background: var(--boss-bg);
+  background: var(--action-bg, var(--boss-bg));
 }
 
 .boss-cast,
@@ -534,12 +621,12 @@ h2 {
 }
 
 .boss-cast.selected {
-  box-shadow: 0 0 0 2px var(--boss);
+  box-shadow: 0 0 0 2px var(--action-color, var(--boss));
 }
 
 .boss-instant.selected .timeline-label {
   border-radius: 4px;
-  box-shadow: inset 0 0 0 2px var(--boss);
+  box-shadow: inset 0 0 0 2px var(--action-color, var(--boss));
 }
 
 .boss-cast.label-outside .timeline-label {
@@ -557,7 +644,7 @@ h2 {
   height: 8px;
   margin-left: 1px;
   transform: rotate(45deg);
-  background: var(--boss);
+  background: var(--action-color, var(--boss));
 }
 
 .skill-marker {

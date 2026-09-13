@@ -1,10 +1,11 @@
-import { PREPULL_SEC } from '../types/timeline'
-import type { SkillDef } from '../types/timeline'
+import { ACTION_TARGETS, DAMAGE_TYPES, PREPULL_SEC } from '../types/timeline'
+import type { ActionTarget, BossActionDetails, DamageType, SkillDef } from '../types/timeline'
 import { parseTimeInput } from './timeInput'
 import { formatTime } from './timeScale'
 
 export const MAX_NAME_LENGTH = 50
 export const MAX_NOTE_LENGTH = 200
+export const MAX_DAMAGE = 9_999_999
 
 const TIME_FORMAT_ERROR = '格式錯誤，請輸入秒數或「分:秒」，例如 75 或 1:15'
 
@@ -58,6 +59,10 @@ export interface BossActionInput {
   /** Blank means an instant action. */
   end: string
   note: string
+  /** Empty strings mean "not set". */
+  damageType: DamageType | ''
+  target: ActionTarget | ''
+  damage: string
 }
 
 export interface BossActionValues {
@@ -65,6 +70,8 @@ export interface BossActionValues {
   castStartSec: number
   castEndSec: number
   note?: string
+  /** Omitted when no detail is set. */
+  details?: BossActionDetails
 }
 
 export function validateBossActionInput(
@@ -99,11 +106,39 @@ export function validateBossActionInput(
   const note = input.note.trim()
   if (note.length > MAX_NOTE_LENGTH) errors.note = `不得超過 ${MAX_NOTE_LENGTH} 字`
 
+  const details: BossActionDetails = {}
+  if (input.damageType) {
+    if ((DAMAGE_TYPES as readonly string[]).includes(input.damageType)) {
+      details.damageType = input.damageType
+    } else {
+      errors.damageType = '傷害類型無效'
+    }
+  }
+  if (input.target) {
+    if ((ACTION_TARGETS as readonly string[]).includes(input.target)) {
+      details.target = input.target
+    } else {
+      errors.target = '攻擊對象無效'
+    }
+  }
+  // Thousands separators are allowed, e.g. "120,000".
+  const damageText = input.damage.replace(/,/g, '').trim()
+  if (damageText) {
+    if (!/^\d+$/.test(damageText)) {
+      errors.damage = '請輸入 0 以上的整數，例如 120000'
+    } else if (Number(damageText) > MAX_DAMAGE) {
+      errors.damage = `不得超過 ${MAX_DAMAGE.toLocaleString('en-US')}`
+    } else {
+      details.damage = Number(damageText)
+    }
+  }
+
   if (castStartSec === null || castEndSec === null || Object.keys(errors).length > 0) {
     return { ok: false, errors }
   }
   const value: BossActionValues = { name, castStartSec, castEndSec }
   if (note) value.note = note
+  if (Object.keys(details).length > 0) value.details = details
   return { ok: true, value }
 }
 

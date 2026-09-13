@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { DAMAGE_TYPE_LABELS, describeDetails } from '../data/bossActionLabels'
 import { describeRecast, getSkillsForJob } from '../data/skills'
 import { analyzeSkillUsage, describeConflict } from '../lib/cooldowns'
 import { layoutBossActions, layoutSkillEntries } from '../lib/timelineLayout'
@@ -12,6 +13,7 @@ import {
   getTimelineRange,
   secToPx,
 } from '../lib/timeScale'
+import { DAMAGE_TYPES } from '../types/timeline'
 import type { BossAction, Encounter } from '../types/timeline'
 
 const LABEL_COLUMN_PX = 112
@@ -34,7 +36,8 @@ function describeBossAction(action: BossAction): string {
     action.castStartSec === action.castEndSec
       ? `瞬發 ${formatTime(action.castStartSec)}`
       : `讀條 ${formatTime(action.castStartSec)} → ${formatTime(action.castEndSec)}`
-  return [action.name, timing, action.note].filter(Boolean).join('\n')
+  const details = action.details ? describeDetails(action.details) : ''
+  return [action.name, timing, details, action.note].filter(Boolean).join('\n')
 }
 
 interface TimelineRowProps {
@@ -161,6 +164,21 @@ export function TimelineView({
         </label>
       </div>
 
+      {encounter.bossActions.some((a) => a.details?.damageType) && (
+        <div className="timeline-legend" aria-label="王招式傷害類型圖例">
+          {DAMAGE_TYPES.map((type) => (
+            <span key={type} className={`legend-item damage-${type}`}>
+              <span className="legend-swatch" aria-hidden="true" />
+              {DAMAGE_TYPE_LABELS[type]}
+            </span>
+          ))}
+          <span className="legend-item">
+            <span className="legend-swatch" aria-hidden="true" />
+            未設定
+          </span>
+        </div>
+      )}
+
       <div
         className="timeline-scroll"
         ref={scrollRef}
@@ -197,6 +215,7 @@ export function TimelineView({
             {boss.items.map(({ action, leftPx, widthPx: barPx, instant, labelOutside, lane }) => {
               const classes = [
                 instant ? 'boss-instant' : 'boss-cast',
+                action.details?.damageType && `damage-${action.details.damageType}`,
                 labelOutside && 'label-outside',
                 action.id === selectedBossActionId && 'selected',
               ]

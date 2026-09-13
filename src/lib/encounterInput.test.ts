@@ -36,7 +36,55 @@ describe('validateEncounterInput', () => {
 })
 
 describe('validateBossActionInput', () => {
-  const base = { name: '全體攻擊', start: '0:10', end: '0:15', note: '' }
+  const base = {
+    name: '全體攻擊',
+    start: '0:10',
+    end: '0:15',
+    note: '',
+    damageType: '' as const,
+    target: '' as const,
+    damage: '',
+  }
+
+  it('collects details and accepts thousands separators', () => {
+    const result = validateBossActionInput(
+      { ...base, damageType: 'magical', target: 'raidwide', damage: ' 120,000 ' },
+      600,
+    )
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        name: '全體攻擊',
+        castStartSec: 10,
+        castEndSec: 15,
+        details: { damageType: 'magical', target: 'raidwide', damage: 120000 },
+      },
+    })
+  })
+
+  it('keeps only the details that are set, including zero damage', () => {
+    const result = validateBossActionInput({ ...base, target: 'tank', damage: '0' }, 600)
+    expect(result).toMatchObject({ ok: true, value: { details: { target: 'tank', damage: 0 } } })
+  })
+
+  it('rejects invalid damage values', () => {
+    for (const damage of ['-5', '1.5', 'abc', '10000000']) {
+      const result = validateBossActionInput({ ...base, damage }, 600)
+      expect(result.ok).toBe(false)
+      if (!result.ok) expect(Object.keys(result.errors)).toEqual(['damage'])
+    }
+  })
+
+  it('rejects unknown damage types and targets', () => {
+    const result = validateBossActionInput(
+      { ...base, damageType: 'fire' as never, target: 'healer' as never },
+      600,
+    )
+    expect(result).toEqual({
+      ok: false,
+      errors: { damageType: '傷害類型無效', target: '攻擊對象無效' },
+    })
+  })
 
   it('accepts a cast and omits an empty note', () => {
     expect(validateBossActionInput(base, 600)).toEqual({

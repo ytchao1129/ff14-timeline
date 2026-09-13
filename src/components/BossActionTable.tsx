@@ -1,3 +1,4 @@
+import { DAMAGE_TYPE_LABELS, TARGET_LABELS, formatDamage } from '../data/bossActionLabels'
 import { useScrollIntoView } from '../hooks/useScrollIntoView'
 import type { BossActionValues } from '../lib/encounterInput'
 import { formatCastLength } from '../lib/encounterOps'
@@ -85,7 +86,20 @@ export function BossActionTable({
               />
             ) : (
               <div key={action.id} id={rowId(action.id)} className="action-row">
-                <div className="cell cell-name">{action.name}</div>
+                <div className="cell cell-name cell-inline">
+                  {action.name}
+                  {action.details?.damageType && (
+                    <span className={`tag damage-${action.details.damageType}`}>
+                      {DAMAGE_TYPE_LABELS[action.details.damageType]}
+                    </span>
+                  )}
+                  {action.details?.target && (
+                    <span className="tag">{TARGET_LABELS[action.details.target]}</span>
+                  )}
+                  {action.details?.damage !== undefined && (
+                    <span className="tag">{formatDamage(action.details.damage)}</span>
+                  )}
+                </div>
                 <div className="cell cell-time">{formatTime(action.castStartSec)}</div>
                 <div className="cell cell-time">
                   {action.castEndSec === action.castStartSec ? '—' : formatTime(action.castEndSec)}

@@ -54,16 +54,21 @@ describe('boss action operations', () => {
     expect(encounter.bossActions).toEqual([])
   })
 
-  it('updates an action, re-sorts, and keeps details', () => {
+  it('updates an action, re-sorts, and replaces details', () => {
     let encounter = emptyEncounter()
-    encounter = addBossAction(encounter, { name: 'A', castStartSec: 10, castEndSec: 12 }, 'a')
+    encounter = addBossAction(
+      encounter,
+      { name: 'A', castStartSec: 10, castEndSec: 12, details: { damageType: 'magical' } },
+      'a',
+    )
     encounter = addBossAction(encounter, { name: 'B', castStartSec: 20, castEndSec: 22 }, 'b')
-    encounter.bossActions[0].details = { damageType: 'magical' }
+    expect(encounter.bossActions[0].details).toEqual({ damageType: 'magical' })
 
     const updated = updateBossAction(encounter, 'a', {
       name: 'A2',
       castStartSec: 30,
       castEndSec: 31,
+      details: { target: 'tank', damage: 90000 },
     })
     expect(updated.bossActions.map((a) => a.id)).toEqual(['b', 'a'])
     expect(updated.bossActions[1]).toEqual({
@@ -71,8 +76,19 @@ describe('boss action operations', () => {
       name: 'A2',
       castStartSec: 30,
       castEndSec: 31,
-      details: { damageType: 'magical' },
+      details: { target: 'tank', damage: 90000 },
     })
+  })
+
+  it('removes details that were cleared in the form', () => {
+    let encounter = emptyEncounter()
+    encounter = addBossAction(
+      encounter,
+      { name: 'A', castStartSec: 1, castEndSec: 2, details: { damage: 1 } },
+      'a',
+    )
+    const updated = updateBossAction(encounter, 'a', { name: 'A', castStartSec: 1, castEndSec: 2 })
+    expect(updated.bossActions[0]).not.toHaveProperty('details')
   })
 
   it('removes a note that was cleared in the form', () => {

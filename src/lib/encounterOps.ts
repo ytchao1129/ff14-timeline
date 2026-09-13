@@ -36,9 +36,9 @@ function sortByStart(actions: BossAction[]): BossAction[] {
   )
 }
 
-/** Applies form values while keeping fields the form does not edit (such as details). */
+/** Applies form values; optional fields left empty in the form are removed. */
 function applyValues(action: BossAction, values: BossActionValues): BossAction {
-  const { note: _oldNote, ...rest } = action
+  const { note: _oldNote, details: _oldDetails, ...rest } = action
   const next: BossAction = {
     ...rest,
     name: values.name,
@@ -46,6 +46,7 @@ function applyValues(action: BossAction, values: BossActionValues): BossAction {
     castEndSec: values.castEndSec,
   }
   if (values.note !== undefined) next.note = values.note
+  if (values.details !== undefined) next.details = values.details
   return next
 }
 
