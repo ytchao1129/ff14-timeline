@@ -12,6 +12,13 @@ dist
 
 # Personal working exports (not part of the project)
 export_data/
+
+# Personal development notes and tool settings
+CLAUDE.md
+AGENTS.md
+REVIEW.md
+PLAN.md
+.claude/
 dist-ssr
 *.local
 
