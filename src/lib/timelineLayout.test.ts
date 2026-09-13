@@ -102,4 +102,20 @@ describe('layoutSkillEntries', () => {
     const { items } = layoutSkillEntries([entry('a', 0, '技能一'), entry('b', 1, '技能二')], range, 8)
     expect(items.map((i) => i.lane)).toEqual([0, 1])
   })
+
+  it('gives each group its own lines in order of first use', () => {
+    const entries = [entry('a', 0, 'A'), entry('b', 100, 'B'), entry('c', 200, 'A2')]
+    const group = (e: SkillEntry) => (e.id === 'b' ? 'skill-b' : 'skill-a')
+    const { items, laneCount } = layoutSkillEntries(entries, range, 8, group)
+    expect(items.map((i) => i.lane)).toEqual([0, 1, 0])
+    expect(laneCount).toBe(2)
+  })
+
+  it('stacks overlapping labels inside a group without affecting other groups', () => {
+    const entries = [entry('a', 0, '技能一'), entry('b', 1, '技能一'), entry('c', 0, '別的')]
+    const group = (e: SkillEntry) => (e.id === 'c' ? 'other' : 'same')
+    const { items, laneCount } = layoutSkillEntries(entries, range, 8, group)
+    expect(items.map((i) => i.lane)).toEqual([0, 1, 2])
+    expect(laneCount).toBe(3)
+  })
 })

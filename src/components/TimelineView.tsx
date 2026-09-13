@@ -1,5 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { describeRecast, getSkillsForJob } from '../data/skills'
+import { analyzeSkillUsage, describeConflict } from '../lib/cooldowns'
 import { layoutBossActions, layoutSkillEntries } from '../lib/timelineLayout'
 import {
   DEFAULT_ZOOM_INDEX,
@@ -16,6 +18,8 @@ const LABEL_COLUMN_PX = 112
 const LANE_HEIGHT_PX = 26
 const TRACK_PADDING_PX = 6
 const RULER_HEIGHT_PX = 28
+// Cooldown bars sit in the gap below a 22px skill marker.
+const COOLDOWN_OFFSET_PX = 23
 
 function trackHeight(laneCount: number): number {
   return TRACK_PADDING_PX * 2 + laneCount * LANE_HEIGHT_PX
@@ -85,6 +89,7 @@ export function TimelineView({
   onSkillEntryClick,
 }: TimelineViewProps) {
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX)
+  const [showCooldowns, setShowCooldowns] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
   // Time at the center of the visible area, kept while zooming.
   const zoomAnchorSec = useRef<number | null>(null)
@@ -146,6 +151,14 @@ export function TimelineView({
           ＋
         </button>
         <span className="timeline-toolbar-note">每秒 {pxPerSec} px</span>
+        <label className="timeline-toggle">
+          <input
+            type="checkbox"
+            checked={showCooldowns}
+            onChange={(e) => setShowCooldowns(e.currentTarget.checked)}
+          />
+          顯示持續時間與冷卻
+        </label>
       </div>
 
       <div
@@ -223,7 +236,14 @@ export function TimelineView({
             </TimelineRow>
           )}
           {encounter.players.map((player, index) => {
-            const layout = layoutSkillEntries(player.entries, range, pxPerSec)
+            const skills = getSkillsForJob(player.job)
+            const skillById = new Map(skills.map((s) => [s.id, s]))
+            const usage = analyzeSkillUsage(player.entries, skills)
+            // Each skill gets its own lines so its uses and cooldowns line up.
+            const layout = layoutSkillEntries(player.entries, range, pxPerSec, (entry) =>
+              entry.skillId && skillById.has(entry.skillId) ? entry.skillId : '',
+            )
+            const laneOf = new Map(layout.items.map((item) => [item.entry.id, item.lane]))
             return (
               <TimelineRow
                 key={player.id}
@@ -238,21 +258,67 @@ export function TimelineView({
                 gridPx={gridPx}
                 zeroPx={zeroPx}
               >
-                {layout.items.map(({ entry, leftPx, lane }) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    className={
-                      entry.id === selectedSkillEntryId ? 'skill-marker selected' : 'skill-marker'
-                    }
-                    style={{ left: leftPx, top: laneTop(lane) }}
-                    title={`${entry.label}\n${formatTime(entry.timeSec)}`}
-                    aria-pressed={entry.id === selectedSkillEntryId}
-                    onClick={() => onSkillEntryClick?.(player.id, entry.id)}
-                  >
-                    <span className="timeline-label">{entry.label}</span>
-                  </button>
-                ))}
+                {showCooldowns &&
+                  layout.items.map(({ entry, leftPx, lane }) => {
+                    const durationSec = entry.skillId
+                      ? skillById.get(entry.skillId)?.durationSec
+                      : undefined
+                    return durationSec ? (
+                      <div
+                        key={`effect-${entry.id}`}
+                        className="skill-effect"
+                        style={{ left: leftPx, top: laneTop(lane), width: durationSec * pxPerSec }}
+                        aria-hidden="true"
+                      />
+                    ) : null
+                  })}
+                {showCooldowns &&
+                  usage.cooldowns.map((cooldown) => (
+                    <div
+                      key={`cooldown-${cooldown.entryId}`}
+                      className="skill-cooldown"
+                      style={{
+                        left: secToPx(cooldown.startSec, range, pxPerSec),
+                        top: laneTop(laneOf.get(cooldown.entryId) ?? 0) + COOLDOWN_OFFSET_PX,
+                        width: (cooldown.endSec - cooldown.startSec) * pxPerSec,
+                      }}
+                      title={`冷卻至 ${formatTime(cooldown.endSec)}`}
+                      aria-hidden="true"
+                    />
+                  ))}
+                {layout.items.map(({ entry, leftPx, lane }) => {
+                  const skill = entry.skillId ? skillById.get(entry.skillId) : undefined
+                  const readyAtSec = usage.conflicts.get(entry.id)
+                  const classes = [
+                    'skill-marker',
+                    readyAtSec !== undefined && 'conflict',
+                    entry.id === selectedSkillEntryId && 'selected',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
+                  const title = [
+                    entry.label,
+                    formatTime(entry.timeSec),
+                    skill && describeRecast(skill),
+                    skill?.durationSec && `持續 ${skill.durationSec} 秒`,
+                    readyAtSec !== undefined && `⚠ ${describeConflict(entry.timeSec, readyAtSec)}`,
+                  ]
+                    .filter(Boolean)
+                    .join('\n')
+                  return (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      className={classes}
+                      style={{ left: leftPx, top: laneTop(lane) }}
+                      title={title}
+                      aria-pressed={entry.id === selectedSkillEntryId}
+                      onClick={() => onSkillEntryClick?.(player.id, entry.id)}
+                    >
+                      <span className="timeline-label">{entry.label}</span>
+                    </button>
+                  )
+                })}
               </TimelineRow>
             )
           })}

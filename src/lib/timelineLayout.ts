@@ -98,17 +98,39 @@ export interface SkillEntryLayout {
   lane: number
 }
 
+/**
+ * Entries sharing a group key (such as the same skill) are packed together;
+ * each group takes its own lines, in order of first appearance.
+ */
 export function layoutSkillEntries(
   entries: SkillEntry[],
   range: TimeRange,
   pxPerSec: number,
+  groupOf: (entry: SkillEntry) => string = () => '',
 ): { items: SkillEntryLayout[]; laneCount: number } {
   const lefts = entries.map((entry) => secToPx(entry.timeSec, range, pxPerSec))
-  const { lanes, laneCount } = assignLanes(
-    entries.map((entry, i) => ({ startPx: lefts[i], endPx: lefts[i] + estimateLabelPx(entry.label) })),
-  )
+  const groups = new Map<string, number[]>()
+  entries.forEach((entry, i) => {
+    const key = groupOf(entry)
+    const indexes = groups.get(key)
+    if (indexes) indexes.push(i)
+    else groups.set(key, [i])
+  })
+
+  const lanes = new Array<number>(entries.length)
+  let laneOffset = 0
+  for (const indexes of groups.values()) {
+    const packed = assignLanes(
+      indexes.map((i) => ({ startPx: lefts[i], endPx: lefts[i] + estimateLabelPx(entries[i].label) })),
+    )
+    indexes.forEach((entryIndex, j) => {
+      lanes[entryIndex] = laneOffset + packed.lanes[j]
+    })
+    laneOffset += packed.laneCount
+  }
+
   return {
     items: entries.map((entry, i) => ({ entry, leftPx: lefts[i], lane: lanes[i] })),
-    laneCount,
+    laneCount: Math.max(1, laneOffset),
   }
 }

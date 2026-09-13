@@ -1,6 +1,7 @@
 import { JOBS, ROLES, ROLE_LABELS, findJob } from '../data/jobs'
 import { describeRecast } from '../data/skills'
 import { useScrollIntoView } from '../hooks/useScrollIntoView'
+import { analyzeSkillUsage, describeConflict } from '../lib/cooldowns'
 import type { SkillEntryValues } from '../lib/encounterInput'
 import { formatTime } from '../lib/timeScale'
 import type { PlayerPlan, SkillDef, SkillEntry } from '../types/timeline'
@@ -41,6 +42,7 @@ export function SkillEntryTable({
 
   const cancel = () => onEditorChange(null)
   const unknownJob = player.job !== '' && !findJob(player.job)
+  const usage = analyzeSkillUsage(player.entries, skills)
 
   return (
     <section className="panel">
@@ -63,6 +65,11 @@ export function SkillEntryTable({
           </select>
         </label>
         <span className="muted">{player.entries.length} 個</span>
+        {usage.conflicts.size > 0 && (
+          <span className="conflict-count" role="status">
+            ⚠ {usage.conflicts.size} 個冷卻衝突
+          </span>
+        )}
         <button
           type="button"
           className="primary panel-header-action"
@@ -110,6 +117,7 @@ export function SkillEntryTable({
               )
             }
             const skill = entry.skillId ? skills.find((s) => s.id === entry.skillId) : undefined
+            const readyAtSec = usage.conflicts.get(entry.id)
             return (
               <div key={entry.id} id={rowId(entry.id)} className="action-row skill-row">
                 <div className="cell cell-time">{formatTime(entry.timeSec)}</div>
@@ -119,6 +127,9 @@ export function SkillEntryTable({
                     <span className="tag">{describeRecast(skill)}</span>
                   ) : (
                     skills.length > 0 && <span className="tag">自訂</span>
+                  )}
+                  {readyAtSec !== undefined && (
+                    <span className="tag tag-danger">{describeConflict(entry.timeSec, readyAtSec)}</span>
                   )}
                 </div>
                 <div className="cell cell-actions">

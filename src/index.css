@@ -16,6 +16,9 @@
   --boss-bg: #ffebe9;
   --player: #0969da;
   --player-bg: #ddf4ff;
+  --player-effect: rgba(9, 105, 218, 0.14);
+  --cooldown: #8c959f;
+  --danger-bg: #ffebe9;
 
   --sans: system-ui, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
   --mono: ui-monospace, Consolas, monospace;
@@ -45,6 +48,9 @@
     --boss-bg: #3d1a1c;
     --player: #4493f8;
     --player-bg: #132a45;
+    --player-effect: rgba(68, 147, 248, 0.2);
+    --cooldown: #6e7681;
+    --danger-bg: #3d1a1c;
   }
 }
 
@@ -281,8 +287,20 @@ h2 {
 
 .cell-inline {
   flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  column-gap: 8px;
+  row-gap: 0;
+}
+
+.tag.tag-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.conflict-count {
+  color: var(--danger);
+  font-size: 13px;
 }
 
 .tag {
@@ -559,6 +577,41 @@ h2 {
 
 .skill-marker.selected .timeline-label {
   box-shadow: inset 0 0 0 2px var(--player);
+}
+
+.skill-marker.conflict,
+.skill-marker.conflict:hover:not(:disabled) {
+  border-left-color: var(--danger);
+}
+
+.skill-marker.conflict .timeline-label {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.skill-effect,
+.skill-cooldown {
+  position: absolute;
+  pointer-events: none;
+}
+
+.skill-effect {
+  height: 22px;
+  border-radius: 0 4px 4px 0;
+  background: var(--player-effect);
+}
+
+.skill-cooldown {
+  height: 3px;
+  background: repeating-linear-gradient(90deg, var(--cooldown) 0 4px, transparent 4px 7px);
+}
+
+.timeline-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  font-size: 13px;
 }
 
 .skill-marker .timeline-label {
