@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
+import { TimelineView } from './components/TimelineView'
 import { createSampleEncounter } from './data/sample'
 import { useEncounters } from './hooks/useEncounters'
 import { downloadTextFile, exportFileName, serializeExport } from './lib/transfer'
@@ -8,6 +9,9 @@ function App() {
   const { encounters, loadError, saveError, addEncounter, removeEncounter, importFromText } =
     useEncounters()
   const [importMessage, setImportMessage] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  const selected = encounters.find((e) => e.id === selectedId) ?? encounters[0]
 
   const handleExport = () => {
     downloadTextFile(exportFileName(), serializeExport(encounters))
@@ -61,12 +65,19 @@ function App() {
       ) : (
         <ul className="encounter-list">
           {encounters.map((encounter) => (
-            <li key={encounter.id}>
-              <span className="encounter-name">{encounter.name}</span>
-              <span className="encounter-meta">
-                {encounter.durationSec} 秒 · 招式 {encounter.bossActions.length} 個 · 玩家{' '}
-                {encounter.players.length} 位
-              </span>
+            <li key={encounter.id} className={encounter === selected ? 'selected' : undefined}>
+              <button
+                type="button"
+                className="encounter-select"
+                onClick={() => setSelectedId(encounter.id)}
+                aria-pressed={encounter === selected}
+              >
+                <span className="encounter-name">{encounter.name}</span>
+                <span className="encounter-meta">
+                  {encounter.durationSec} 秒 · 招式 {encounter.bossActions.length} 個 · 玩家{' '}
+                  {encounter.players.length} 位
+                </span>
+              </button>
               <button type="button" onClick={() => handleRemove(encounter.id, encounter.name)}>
                 刪除
               </button>
@@ -74,6 +85,8 @@ function App() {
           ))}
         </ul>
       )}
+
+      {selected && <TimelineView encounter={selected} />}
     </main>
   )
 }
