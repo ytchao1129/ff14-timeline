@@ -3,8 +3,10 @@ import type { ChangeEvent } from 'react'
 import { BossActionTable } from './components/BossActionTable'
 import type { ActionEditor } from './components/BossActionTable'
 import { EncounterForm } from './components/EncounterForm'
+import { PresetPanel } from './components/PresetPanel'
 import { SkillEntryTable } from './components/SkillEntryTable'
 import { TimelineView } from './components/TimelineView'
+import { PRESETS } from './data/presets'
 import { createSampleEncounter } from './data/sample'
 import { getSkillsForJob } from './data/skills'
 import { useEncounters } from './hooks/useEncounters'
@@ -23,6 +25,7 @@ import {
   updateEncounterInfo,
   updateSkillEntry,
 } from './lib/encounterOps'
+import { createId } from './lib/id'
 import { formatTime } from './lib/timeScale'
 import { downloadTextFile, exportFileName, serializeExport } from './lib/transfer'
 import { MAX_PLAYERS } from './types/timeline'
@@ -48,6 +51,7 @@ function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creatingEncounter, setCreatingEncounter] = useState(false)
   const [editingInfo, setEditingInfo] = useState(false)
+  const [showPresets, setShowPresets] = useState(false)
   const [editor, setEditor] = useState<Editor>(null)
   const [bossCollapsed, setBossCollapsed] = useState(false)
   const [collapsedPlayerIds, setCollapsedPlayerIds] = useState<ReadonlySet<string>>(new Set())
@@ -139,6 +143,13 @@ function App() {
         <button type="button" onClick={() => addAndSelect(createSampleEncounter('範例副本'))}>
           新增範例副本
         </button>
+        <button
+          type="button"
+          onClick={() => setShowPresets((shown) => !shown)}
+          aria-expanded={showPresets}
+        >
+          預設排軸
+        </button>
         <button type="button" onClick={handleExport} disabled={encounters.length === 0}>
           匯出
         </button>
@@ -148,6 +159,18 @@ function App() {
         </label>
       </div>
       {importMessage && <p className="status">{importMessage}</p>}
+
+      {showPresets && (
+        <PresetPanel
+          presets={PRESETS}
+          onAdd={(preset) => {
+            // A fresh id lets the same preset be added more than once.
+            addAndSelect({ ...preset.encounter, id: createId() })
+            setImportMessage(`已從預設排軸加入「${preset.encounter.name}」`)
+          }}
+          onClose={() => setShowPresets(false)}
+        />
+      )}
 
       {creatingEncounter && (
         <section className="panel">

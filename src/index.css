@@ -177,6 +177,24 @@ h2 {
   margin-left: auto;
 }
 
+.preset-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.preset-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.preset-list .encounter-meta {
+  flex: 1;
+}
+
 .players-header {
   display: flex;
   align-items: center;

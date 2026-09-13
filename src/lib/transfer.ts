@@ -28,6 +28,11 @@ export function parseImport(text: string): ParseResult<Encounter[]> {
   } catch {
     return { ok: false, error: '檔案不是有效的 JSON' }
   }
+  return parseExportData(json)
+}
+
+/** Validates already-parsed export data, such as a bundled preset file. */
+export function parseExportData(json: unknown): ParseResult<Encounter[]> {
   if (isRecord(json) && json.app !== APP_ID) {
     return { ok: false, error: '這不是排軸器匯出的檔案' }
   }
