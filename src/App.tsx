@@ -5,6 +5,7 @@ import type { ActionEditor } from './components/BossActionTable'
 import { EncounterForm } from './components/EncounterForm'
 import { PresetPanel } from './components/PresetPanel'
 import { SkillEntryTable } from './components/SkillEntryTable'
+import { ThemeToggle } from './components/ThemeToggle'
 import { TimelineView } from './components/TimelineView'
 import { PRESETS } from './data/presets'
 import { createSampleEncounter } from './data/sample'
@@ -118,7 +119,10 @@ function App() {
 
   return (
     <main className="app">
-      <h1>FF14 副本排軸器</h1>
+      <header className="app-header">
+        <h1>FF14 副本排軸器</h1>
+        <ThemeToggle />
+      </header>
 
       {loadError && (
         <p className="alert" role="alert">

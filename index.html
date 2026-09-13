@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FF14 副本排軸器</title>
+    <script>
+      // Apply the saved theme before the first paint to avoid a light flash.
+      // Keep the key and values in sync with src/lib/theme.ts.
+      try {
+        var preference = localStorage.getItem('ff14-timeline:theme')
+        var dark =
+          preference === 'dark' ||
+          (preference !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

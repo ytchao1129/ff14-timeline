@@ -30,40 +30,41 @@
   --mono: ui-monospace, Consolas, monospace;
 
   font: 15px/1.5 var(--sans);
-  color-scheme: light dark;
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #e6edf3;
-    --text-muted: #9198a1;
-    --bg: #15171c;
-    --border: #3d444d;
-    --surface: #1e2128;
-    --danger: #f85149;
-    --grid: #262a31;
-    --zero: #6e7681;
-    --prepull-bg: repeating-linear-gradient(
-      -45deg,
-      #1e2128 0 6px,
-      #262a31 6px 12px
-    );
-    --boss: #f85149;
-    --boss-bg: #3d1a1c;
-    --player: #4493f8;
-    --player-bg: #132a45;
-    --player-effect: rgba(68, 147, 248, 0.2);
-    --cooldown: #6e7681;
-    --danger-bg: #3d1a1c;
-    --physical: #f0883e;
-    --physical-bg: #3d2410;
-    --magical: #a371f7;
-    --magical-bg: #2b1d45;
-    --unique: #8b949e;
-    --unique-bg: #262a31;
-  }
+/* data-theme is set by useTheme and by the inline script in index.html. */
+:root[data-theme='dark'] {
+  --text: #e6edf3;
+  --text-muted: #9198a1;
+  --bg: #15171c;
+  --border: #3d444d;
+  --surface: #1e2128;
+  --danger: #f85149;
+  --grid: #262a31;
+  --zero: #6e7681;
+  --prepull-bg: repeating-linear-gradient(
+    -45deg,
+    #1e2128 0 6px,
+    #262a31 6px 12px
+  );
+  --boss: #f85149;
+  --boss-bg: #3d1a1c;
+  --player: #4493f8;
+  --player-bg: #132a45;
+  --player-effect: rgba(68, 147, 248, 0.2);
+  --cooldown: #6e7681;
+  --danger-bg: #3d1a1c;
+  --physical: #f0883e;
+  --physical-bg: #3d2410;
+  --magical: #a371f7;
+  --magical-bg: #2b1d45;
+  --unique: #8b949e;
+  --unique-bg: #262a31;
+
+  color-scheme: dark;
 }
 
 body {
@@ -75,8 +76,40 @@ body {
 }
 
 h1 {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 24px;
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  margin-left: auto;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.theme-toggle button {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 0;
+  font-size: 13px;
+}
+
+.theme-toggle button + button {
+  border-left: 1px solid var(--border);
+}
+
+.theme-toggle button[aria-pressed='true'] {
+  background: var(--player-bg);
+  color: var(--player);
+  font-weight: 600;
 }
 
 p {
