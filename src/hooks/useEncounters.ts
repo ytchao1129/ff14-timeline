@@ -30,6 +30,10 @@ export function useEncounters() {
     setEncounters((prev) => [...prev, encounter])
   }, [])
 
+  const updateEncounter = useCallback((id: string, recipe: (e: Encounter) => Encounter) => {
+    setEncounters((prev) => prev.map((e) => (e.id === id ? recipe(e) : e)))
+  }, [])
+
   const removeEncounter = useCallback((id: string) => {
     setEncounters((prev) => prev.filter((e) => e.id !== id))
   }, [])
@@ -46,6 +50,7 @@ export function useEncounters() {
     loadError: initial.ok ? null : initial.error,
     saveError,
     addEncounter,
+    updateEncounter,
     removeEncounter,
     importFromText,
   }

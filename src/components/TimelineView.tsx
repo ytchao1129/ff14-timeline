@@ -71,9 +71,15 @@ function TimelineRow({
 
 interface TimelineViewProps {
   encounter: Encounter
+  selectedBossActionId?: string | null
+  onBossActionClick?: (id: string) => void
 }
 
-export function TimelineView({ encounter }: TimelineViewProps) {
+export function TimelineView({
+  encounter,
+  selectedBossActionId = null,
+  onBossActionClick,
+}: TimelineViewProps) {
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX)
   const scrollRef = useRef<HTMLDivElement>(null)
   // Time at the center of the visible area, kept while zooming.
@@ -172,26 +178,30 @@ export function TimelineView({ encounter }: TimelineViewProps) {
               </span>
             )}
             {boss.items.map(({ action, leftPx, widthPx: barPx, instant, labelOutside, lane }) => {
-              const title = describeBossAction(action)
-              return instant ? (
-                <div
+              const classes = [
+                instant ? 'boss-instant' : 'boss-cast',
+                labelOutside && 'label-outside',
+                action.id === selectedBossActionId && 'selected',
+              ]
+                .filter(Boolean)
+                .join(' ')
+              return (
+                <button
                   key={action.id}
-                  className="boss-instant"
-                  style={{ left: leftPx, top: laneTop(lane) }}
-                  title={title}
+                  type="button"
+                  className={classes}
+                  style={{
+                    left: leftPx,
+                    top: laneTop(lane),
+                    width: instant ? undefined : barPx,
+                  }}
+                  title={describeBossAction(action)}
+                  aria-pressed={action.id === selectedBossActionId}
+                  onClick={() => onBossActionClick?.(action.id)}
                 >
-                  <span className="boss-instant-marker" aria-hidden="true" />
+                  {instant && <span className="boss-instant-marker" aria-hidden="true" />}
                   <span className="timeline-label">{action.name}</span>
-                </div>
-              ) : (
-                <div
-                  key={action.id}
-                  className={labelOutside ? 'boss-cast label-outside' : 'boss-cast'}
-                  style={{ left: leftPx, top: laneTop(lane), width: barPx }}
-                  title={title}
-                >
-                  <span className="timeline-label">{action.name}</span>
-                </div>
+                </button>
               )
             })}
           </TimelineRow>
