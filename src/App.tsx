@@ -16,6 +16,7 @@ import {
   createEncounter,
   latestUsedSec,
   removeBossAction,
+  removePlayer,
   removeSkillEntry,
   setPlayerJob,
   updateBossAction,
@@ -24,6 +25,7 @@ import {
 } from './lib/encounterOps'
 import { formatTime } from './lib/timeScale'
 import { downloadTextFile, exportFileName, serializeExport } from './lib/transfer'
+import { MAX_PLAYERS } from './types/timeline'
 import type { Encounter } from './types/timeline'
 
 /** Only one add/edit form is open at a time, either for the boss or for one player. */
@@ -233,22 +235,24 @@ function App() {
             }}
           />
 
-          {selected.players.length === 0 ? (
-            <section className="panel">
-              <div className="panel-header">
-                <h2>玩家技能</h2>
-                <span className="muted">尚無玩家軌道</span>
-                <button
-                  type="button"
-                  className="primary panel-header-action"
-                  onClick={() => updateEncounter(selected.id, addPlayer)}
-                >
-                  新增玩家軌道
-                </button>
-              </div>
-            </section>
-          ) : (
-            selected.players.map((player, index) => (
+          <div className="players-header">
+            <h2>玩家技能</h2>
+            <span className="muted">
+              {selected.players.length} / {MAX_PLAYERS} 位
+            </span>
+            <button
+              type="button"
+              className="primary panel-header-action"
+              onClick={() => updateEncounter(selected.id, addPlayer)}
+              disabled={selected.players.length >= MAX_PLAYERS}
+            >
+              新增玩家
+            </button>
+          </div>
+          {selected.players.length === 0 && (
+            <p className="empty">尚無玩家軌道，按「新增玩家」開始。</p>
+          )}
+          {selected.players.map((player, index) => (
               <SkillEntryTable
                 key={player.id}
                 player={player}
@@ -286,9 +290,18 @@ function App() {
                   updateEncounter(selected.id, (e) => removeSkillEntry(e, player.id, entry.id))
                   if (isEditing(entry.id)) setEditor(null)
                 }}
+                onRemovePlayer={() => {
+                  const entryCount = player.entries.length
+                  const message =
+                    entryCount > 0
+                      ? `確定要移除玩家 ${index + 1} 嗎？其 ${entryCount} 個技能會一併刪除，此操作無法復原。`
+                      : `確定要移除玩家 ${index + 1} 嗎？`
+                  if (!window.confirm(message)) return
+                  updateEncounter(selected.id, (e) => removePlayer(e, player.id))
+                  if (editor?.target === 'player' && editor.playerId === player.id) setEditor(null)
+                }}
               />
-            ))
-          )}
+            ))}
         </>
       )}
     </main>

@@ -11,6 +11,7 @@ import {
   formatCastLength,
   latestUsedSec,
   removeBossAction,
+  removePlayer,
   removeSkillEntry,
   setPlayerJob,
   updateBossAction,
@@ -145,6 +146,30 @@ describe('addPlayer', () => {
     for (let i = 0; i < MAX_PLAYERS + 2; i++) encounter = addPlayer(encounter)
     expect(encounter.players).toHaveLength(MAX_PLAYERS)
     expect(new Set(encounter.players.map((p) => p.id)).size).toBe(MAX_PLAYERS)
+  })
+})
+
+describe('removePlayer', () => {
+  it('removes only the chosen player and keeps the result valid', () => {
+    let encounter = addPlayer(addPlayer(emptyEncounter()))
+    const [first, second, third] = encounter.players
+    encounter = addSkillEntry(encounter, second.id, { timeSec: 5, label: 'S' })
+
+    const updated = removePlayer(encounter, second.id)
+    expect(updated.players).toEqual([first, third])
+    expect(parseSaveData({ version: 1, encounters: [updated] }).ok).toBe(true)
+  })
+
+  it('allows adding again after removing at the maximum', () => {
+    let encounter: Encounter = { ...emptyEncounter(), players: [] }
+    for (let i = 0; i < MAX_PLAYERS; i++) encounter = addPlayer(encounter)
+    encounter = removePlayer(encounter, encounter.players[3].id)
+    expect(addPlayer(encounter).players).toHaveLength(MAX_PLAYERS)
+  })
+
+  it('leaves the encounter unchanged for an unknown player', () => {
+    const encounter = emptyEncounter()
+    expect(removePlayer(encounter, 'missing').players).toEqual(encounter.players)
   })
 })
 

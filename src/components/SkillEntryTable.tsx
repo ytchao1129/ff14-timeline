@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { JOBS, ROLES, ROLE_LABELS, findJob } from '../data/jobs'
 import { describeRecast } from '../data/skills'
 import { useScrollIntoView } from '../hooks/useScrollIntoView'
@@ -23,6 +24,7 @@ interface SkillEntryTableProps {
   onAdd: (values: SkillEntryValues) => void
   onUpdate: (id: string, values: SkillEntryValues) => void
   onRemove: (entry: SkillEntry) => void
+  onRemovePlayer: () => void
 }
 
 export function SkillEntryTable({
@@ -36,7 +38,11 @@ export function SkillEntryTable({
   onAdd,
   onUpdate,
   onRemove,
+  onRemovePlayer,
 }: SkillEntryTableProps) {
+  const [collapsed, setCollapsed] = useState(false)
+  // An open form (e.g. from clicking the timeline) always shows the table.
+  const expanded = !collapsed || editor !== null
   const addRowId = `skill-entry-new-${player.id}`
   useScrollIntoView(editor ? (editor.mode === 'add' ? addRowId : rowId(editor.id)) : null)
 
@@ -70,81 +76,101 @@ export function SkillEntryTable({
             ⚠ {usage.conflicts.size} 個冷卻衝突
           </span>
         )}
-        <button
-          type="button"
-          className="primary panel-header-action"
-          onClick={() => onEditorChange({ mode: 'add' })}
-          disabled={editor?.mode === 'add'}
-        >
-          新增技能
-        </button>
-      </div>
-
-      <div className="action-table-scroll">
-        <div className="action-table skill-table">
-          <div className="action-row skill-row action-header" aria-hidden="true">
-            <div className="cell">使用時間</div>
-            <div className="cell">技能</div>
-            <div className="cell" />
-          </div>
-
-          {editor?.mode === 'add' && (
-            <SkillEntryForm
-              rowId={addRowId}
-              durationSec={durationSec}
-              skills={skills}
-              onSubmit={onAdd}
-              onCancel={cancel}
-            />
-          )}
-
-          {player.entries.length === 0 && editor?.mode !== 'add' && (
-            <p className="action-empty">尚無技能，按「新增技能」開始排軸。可排入開打前 16 秒。</p>
-          )}
-
-          {player.entries.map((entry) => {
-            if (editor?.mode === 'edit' && editor.id === entry.id) {
-              return (
-                <SkillEntryForm
-                  key={entry.id}
-                  rowId={rowId(entry.id)}
-                  initial={entry}
-                  durationSec={durationSec}
-                  skills={skills}
-                  onSubmit={(values) => onUpdate(entry.id, values)}
-                  onCancel={cancel}
-                />
-              )
-            }
-            const skill = entry.skillId ? skills.find((s) => s.id === entry.skillId) : undefined
-            const readyAtSec = usage.conflicts.get(entry.id)
-            return (
-              <div key={entry.id} id={rowId(entry.id)} className="action-row skill-row">
-                <div className="cell cell-time">{formatTime(entry.timeSec)}</div>
-                <div className="cell cell-name cell-inline">
-                  {entry.label}
-                  {skill ? (
-                    <span className="tag">{describeRecast(skill)}</span>
-                  ) : (
-                    skills.length > 0 && <span className="tag">自訂</span>
-                  )}
-                  {readyAtSec !== undefined && (
-                    <span className="tag tag-danger">{describeConflict(entry.timeSec, readyAtSec)}</span>
-                  )}
-                </div>
-                <div className="cell cell-actions">
-                  <button type="button" onClick={() => onEditorChange({ mode: 'edit', id: entry.id })}>
-                    編輯
-                  </button>
-                  <button type="button" onClick={() => onRemove(entry)}>
-                    刪除
-                  </button>
-                </div>
-              </div>
-            )
-          })}
+        <div className="panel-header-buttons">
+          <button
+            type="button"
+            onClick={() => setCollapsed(expanded)}
+            disabled={editor !== null}
+            aria-expanded={expanded}
+          >
+            {expanded ? '收合' : '展開'}
+          </button>
+          <button type="button" onClick={onRemovePlayer}>
+            移除玩家
+          </button>
+          <button
+            type="button"
+            className="primary"
+            onClick={() => onEditorChange({ mode: 'add' })}
+            disabled={editor?.mode === 'add'}
+          >
+            新增技能
+          </button>
         </div>
       </div>
+
+      {expanded && (
+        <div className="action-table-scroll">
+          <div className="action-table skill-table">
+            <div className="action-row skill-row action-header" aria-hidden="true">
+              <div className="cell">使用時間</div>
+              <div className="cell">技能</div>
+              <div className="cell" />
+            </div>
+
+            {editor?.mode === 'add' && (
+              <SkillEntryForm
+                rowId={addRowId}
+                durationSec={durationSec}
+                skills={skills}
+                onSubmit={onAdd}
+                onCancel={cancel}
+              />
+            )}
+
+            {player.entries.length === 0 && editor?.mode !== 'add' && (
+              <p className="action-empty">尚無技能，按「新增技能」開始排軸。可排入開打前 16 秒。</p>
+            )}
+
+            {player.entries.map((entry) => {
+              if (editor?.mode === 'edit' && editor.id === entry.id) {
+                return (
+                  <SkillEntryForm
+                    key={entry.id}
+                    rowId={rowId(entry.id)}
+                    initial={entry}
+                    durationSec={durationSec}
+                    skills={skills}
+                    onSubmit={(values) => onUpdate(entry.id, values)}
+                    onCancel={cancel}
+                  />
+                )
+              }
+              const skill = entry.skillId ? skills.find((s) => s.id === entry.skillId) : undefined
+              const readyAtSec = usage.conflicts.get(entry.id)
+              return (
+                <div key={entry.id} id={rowId(entry.id)} className="action-row skill-row">
+                  <div className="cell cell-time">{formatTime(entry.timeSec)}</div>
+                  <div className="cell cell-name cell-inline">
+                    {entry.label}
+                    {skill ? (
+                      <span className="tag">{describeRecast(skill)}</span>
+                    ) : (
+                      skills.length > 0 && <span className="tag">自訂</span>
+                    )}
+                    {readyAtSec !== undefined && (
+                      <span className="tag tag-danger">
+                        {describeConflict(entry.timeSec, readyAtSec)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="cell cell-actions">
+                    <button
+                      type="button"
+                      onClick={() => onEditorChange({ mode: 'edit', id: entry.id })}
+                    >
+                      編輯
+                    </button>
+                    <button type="button" onClick={() => onRemove(entry)}>
+                      刪除
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </section>
   )
 }

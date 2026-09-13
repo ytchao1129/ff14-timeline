@@ -86,6 +86,10 @@ export function addPlayer(encounter: Encounter): Encounter {
   return { ...encounter, players: [...encounter.players, createPlayerPlan()] }
 }
 
+export function removePlayer(encounter: Encounter, playerId: string): Encounter {
+  return { ...encounter, players: encounter.players.filter((p) => p.id !== playerId) }
+}
+
 function sortByTime(entries: SkillEntry[]): SkillEntry[] {
   return [...entries].sort((a, b) => a.timeSec - b.timeSec)
 }

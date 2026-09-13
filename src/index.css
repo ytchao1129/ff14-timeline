@@ -171,6 +171,19 @@ h2 {
   margin-left: auto;
 }
 
+.panel-header-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.players-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
 .inline-form {
   display: flex;
   flex-wrap: wrap;
