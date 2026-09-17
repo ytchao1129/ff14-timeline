@@ -537,8 +537,20 @@ h2 {
 
 /* Timeline */
 
+/* Keep rows scrolled into view clear of the sticky timeline. */
+html {
+  scroll-padding-top: calc(var(--timeline-sticky-height, 0px) + 12px);
+}
+
+/* The timeline stays at the top while the tables below it scroll. */
 .timeline {
-  margin-top: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: 20px -24px 0;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
 }
 
 .timeline-toolbar {
@@ -559,7 +571,9 @@ h2 {
 }
 
 .timeline-scroll {
-  overflow-x: auto;
+  /* Tall timelines (many players) scroll inside so the tables stay visible. */
+  max-height: 45vh;
+  overflow: auto;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
@@ -633,6 +647,12 @@ h2 {
 }
 
 .timeline-ruler {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  /* A shadow instead of a border avoids doubling the next row's top border. */
+  box-shadow: 0 1px 0 var(--border);
+  background: var(--surface);
   font-size: 12px;
   color: var(--text-muted);
 }
@@ -768,4 +788,44 @@ h2 {
 .skill-marker .timeline-label {
   border-radius: 0 4px 4px 0;
   background: var(--player-bg);
+}
+
+.skill-marker.draggable {
+  cursor: grab;
+  /* Let pointer events drive the drag instead of touch scrolling. */
+  touch-action: none;
+}
+
+.skill-marker.dragging {
+  z-index: 2;
+  cursor: grabbing;
+}
+
+.skill-marker.dragging .timeline-label {
+  box-shadow: 0 0 0 2px var(--player);
+}
+
+.drag-time {
+  font-family: var(--mono);
+}
+
+.track-title-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.track-lock {
+  padding: 0 3px;
+  border-color: transparent;
+  background: transparent;
+  font-size: 12px;
+  line-height: 18px;
+  opacity: 0.45;
+}
+
+.track-lock[aria-pressed='true'] {
+  border-color: var(--player);
+  background: var(--player-bg);
+  opacity: 1;
 }

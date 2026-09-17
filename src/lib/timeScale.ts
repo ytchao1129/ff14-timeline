@@ -30,6 +30,24 @@ export function secToPx(sec: number, range: TimeRange, pxPerSec: number): number
   return (sec - range.startSec) * pxPerSec
 }
 
+/**
+ * Time after dragging a marker by `deltaPx`, rounded to `stepSec` and kept
+ * within [minSec, maxSec].
+ */
+export function dragTimeSec(
+  originSec: number,
+  deltaPx: number,
+  pxPerSec: number,
+  stepSec: number,
+  minSec: number,
+  maxSec: number,
+): number {
+  const snapped = Math.round((originSec + deltaPx / pxPerSec) / stepSec) * stepSec
+  // Rounding to tenths drops floating point noise such as 12.300000000000001.
+  const tenths = Math.round(snapped * 10) / 10
+  return Math.min(maxSec, Math.max(minSec, tenths)) + 0
+}
+
 /** Smallest step that keeps tick labels at least MIN_TICK_SPACING_PX apart. */
 export function chooseTickStep(pxPerSec: number): number {
   return (

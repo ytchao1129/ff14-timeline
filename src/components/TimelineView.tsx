@@ -1,5 +1,5 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { DAMAGE_TYPE_LABELS, describeDetails } from '../data/bossActionLabels'
 import { describeRecast, getSkillsForJob } from '../data/skills'
 import { analyzeSkillUsage, describeConflict } from '../lib/cooldowns'
@@ -9,12 +9,13 @@ import {
   ZOOM_LEVELS,
   buildTicks,
   chooseTickStep,
+  dragTimeSec,
   formatTime,
   getTimelineRange,
   secToPx,
 } from '../lib/timeScale'
-import { DAMAGE_TYPES } from '../types/timeline'
-import type { BossAction, Encounter } from '../types/timeline'
+import { DAMAGE_TYPES, PREPULL_SEC } from '../types/timeline'
+import type { BossAction, Encounter, SkillEntry } from '../types/timeline'
 
 const LABEL_COLUMN_PX = 112
 const LANE_HEIGHT_PX = 26
@@ -22,6 +23,20 @@ const TRACK_PADDING_PX = 6
 const RULER_HEIGHT_PX = 28
 // Cooldown bars sit in the gap below a 22px skill marker.
 const COOLDOWN_OFFSET_PX = 23
+// A press that moves less than this is treated as a click.
+const DRAG_THRESHOLD_PX = 4
+const DRAG_STEP_SEC = 1
+const DRAG_FINE_STEP_SEC = 0.1
+
+interface SkillDrag {
+  playerId: string
+  entryId: string
+  pointerId: number
+  startX: number
+  originSec: number
+  timeSec: number
+  moved: boolean
+}
 
 function trackHeight(laneCount: number): number {
   return TRACK_PADDING_PX * 2 + laneCount * LANE_HEIGHT_PX
@@ -82,6 +97,11 @@ interface TimelineViewProps {
   onBossActionClick?: (id: string) => void
   selectedSkillEntryId?: string | null
   onSkillEntryClick?: (playerId: string, entryId: string) => void
+  /** Called when a skill marker is dropped at a new time. */
+  onSkillEntryMove?: (playerId: string, entryId: string, timeSec: number) => void
+  /** Players whose skills cannot be dragged. */
+  lockedPlayerIds?: ReadonlySet<string>
+  onTogglePlayerLock?: (playerId: string) => void
 }
 
 export function TimelineView({
@@ -90,9 +110,16 @@ export function TimelineView({
   onBossActionClick,
   selectedSkillEntryId = null,
   onSkillEntryClick,
+  onSkillEntryMove,
+  lockedPlayerIds,
+  onTogglePlayerLock,
 }: TimelineViewProps) {
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX)
   const [showCooldowns, setShowCooldowns] = useState(true)
+  const [drag, setDrag] = useState<SkillDrag | null>(null)
+  // The click that follows a drag must not open the editor.
+  const suppressClick = useRef(false)
+  const sectionRef = useRef<HTMLElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   // Time at the center of the visible area, kept while zooming.
   const zoomAnchorSec = useRef<number | null>(null)
@@ -125,8 +152,87 @@ export function TimelineView({
       (anchorSec - range.startSec) * pxPerSec - (el.clientWidth - LABEL_COLUMN_PX) / 2
   }, [pxPerSec, range.startSec])
 
+  // The timeline sticks to the top of the page; rows scrolled into view below
+  // it (e.g. the form opened by clicking a marker) must not end up hidden.
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const root = document.documentElement
+    const observer = new ResizeObserver(() => {
+      root.style.setProperty('--timeline-sticky-height', `${el.offsetHeight}px`)
+    })
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      root.style.removeProperty('--timeline-sticky-height')
+    }
+  }, [])
+
+  // Escape cancels a drag in progress.
+  const dragging = drag !== null
+  useEffect(() => {
+    if (!dragging) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      suppressClick.current = true
+      setDrag(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [dragging])
+
+  const startDrag = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    playerId: string,
+    entry: SkillEntry,
+  ) => {
+    suppressClick.current = false
+    if (!onSkillEntryMove || lockedPlayerIds?.has(playerId) || event.button !== 0) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setDrag({
+      playerId,
+      entryId: entry.id,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      originSec: entry.timeSec,
+      timeSec: entry.timeSec,
+      moved: false,
+    })
+  }
+
+  const moveDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const { clientX, pointerId, shiftKey } = event
+    setDrag((current) => {
+      if (!current || current.pointerId !== pointerId) return current
+      const deltaPx = clientX - current.startX
+      if (!current.moved && Math.abs(deltaPx) < DRAG_THRESHOLD_PX) return current
+      const timeSec = dragTimeSec(
+        current.originSec,
+        deltaPx,
+        pxPerSec,
+        shiftKey ? DRAG_FINE_STEP_SEC : DRAG_STEP_SEC,
+        -PREPULL_SEC,
+        encounter.durationSec,
+      )
+      return { ...current, moved: true, timeSec }
+    })
+  }
+
+  const endDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!drag || drag.pointerId !== event.pointerId) return
+    if (drag.moved) {
+      suppressClick.current = true
+      if (drag.timeSec !== drag.originSec) {
+        onSkillEntryMove?.(drag.playerId, drag.entryId, drag.timeSec)
+      }
+    }
+    setDrag(null)
+  }
+
+  const activeDrag = drag?.moved ? drag : null
+
   return (
-    <section className="timeline" aria-label={`${encounter.name} 時間軸`}>
+    <section ref={sectionRef} className="timeline" aria-label={`${encounter.name} 時間軸`}>
       <div className="timeline-toolbar">
         <span>縮放</span>
         <button
@@ -257,18 +363,41 @@ export function TimelineView({
           {encounter.players.map((player, index) => {
             const skills = getSkillsForJob(player.job)
             const skillById = new Map(skills.map((s) => [s.id, s]))
-            const usage = analyzeSkillUsage(player.entries, skills)
+            // While dragging, draw the entry (and its cooldown) at the new time.
+            const entries =
+              activeDrag?.playerId === player.id
+                ? player.entries.map((e) =>
+                    e.id === activeDrag.entryId ? { ...e, timeSec: activeDrag.timeSec } : e,
+                  )
+                : player.entries
+            const usage = analyzeSkillUsage(entries, skills)
             // Each skill gets its own lines so its uses and cooldowns line up.
-            const layout = layoutSkillEntries(player.entries, range, pxPerSec, (entry) =>
+            const layout = layoutSkillEntries(entries, range, pxPerSec, (entry) =>
               entry.skillId && skillById.has(entry.skillId) ? entry.skillId : '',
             )
             const laneOf = new Map(layout.items.map((item) => [item.entry.id, item.lane]))
+            const locked = lockedPlayerIds?.has(player.id) ?? false
+            const canDrag = Boolean(onSkillEntryMove) && !locked
             return (
               <TimelineRow
                 key={player.id}
                 label={
                   <>
-                    <span className="track-title">玩家 {index + 1}</span>
+                    <span className="track-title-row">
+                      <span className="track-title">玩家 {index + 1}</span>
+                      {onSkillEntryMove && onTogglePlayerLock && (
+                        <button
+                          type="button"
+                          className="track-lock"
+                          aria-pressed={locked}
+                          aria-label={`${locked ? '解除鎖定' : '鎖定'}玩家 ${index + 1}`}
+                          title={locked ? '已鎖定：技能不能拖曳，點擊解除' : '鎖定後技能不能拖曳'}
+                          onClick={() => onTogglePlayerLock(player.id)}
+                        >
+                          {locked ? '🔒' : '🔓'}
+                        </button>
+                      )}
+                    </span>
                     {player.job && <span className="track-subtitle">{player.job}</span>}
                   </>
                 }
@@ -308,8 +437,11 @@ export function TimelineView({
                 {layout.items.map(({ entry, leftPx, lane }) => {
                   const skill = entry.skillId ? skillById.get(entry.skillId) : undefined
                   const readyAtSec = usage.conflicts.get(entry.id)
+                  const isDragged = activeDrag?.entryId === entry.id
                   const classes = [
                     'skill-marker',
+                    canDrag && 'draggable',
+                    isDragged && 'dragging',
                     readyAtSec !== undefined && 'conflict',
                     entry.id === selectedSkillEntryId && 'selected',
                   ]
@@ -321,6 +453,8 @@ export function TimelineView({
                     skill && describeRecast(skill),
                     skill?.durationSec && `持續 ${skill.durationSec} 秒`,
                     readyAtSec !== undefined && `⚠ ${describeConflict(entry.timeSec, readyAtSec)}`,
+                    canDrag && '可拖曳調整時間（按住 Shift 以 0.1 秒微調）',
+                    onSkillEntryMove && locked && '🔒 此玩家已鎖定，不能拖曳',
                   ]
                     .filter(Boolean)
                     .join('\n')
@@ -330,11 +464,27 @@ export function TimelineView({
                       type="button"
                       className={classes}
                       style={{ left: leftPx, top: laneTop(lane) }}
-                      title={title}
+                      title={isDragged ? undefined : title}
                       aria-pressed={entry.id === selectedSkillEntryId}
-                      onClick={() => onSkillEntryClick?.(player.id, entry.id)}
+                      onPointerDown={(e) => startDrag(e, player.id, entry)}
+                      onPointerMove={moveDrag}
+                      onPointerUp={endDrag}
+                      onPointerCancel={() => setDrag(null)}
+                      onClick={(e) => {
+                        // detail is 0 for keyboard activation, which never follows a drag.
+                        if (suppressClick.current && e.detail !== 0) {
+                          suppressClick.current = false
+                          return
+                        }
+                        onSkillEntryClick?.(player.id, entry.id)
+                      }}
                     >
-                      <span className="timeline-label">{entry.label}</span>
+                      <span className="timeline-label">
+                        {entry.label}
+                        {isDragged && (
+                          <span className="drag-time"> {formatTime(entry.timeSec)}</span>
+                        )}
+                      </span>
                     </button>
                   )
                 })}

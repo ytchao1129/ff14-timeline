@@ -3,6 +3,7 @@ import { createSampleEncounter } from '../data/sample'
 import {
   buildTicks,
   chooseTickStep,
+  dragTimeSec,
   formatTime,
   getTimelineRange,
   secToPx,
@@ -31,6 +32,25 @@ describe('secToPx', () => {
     const range = { startSec: -16, endSec: 100 }
     expect(secToPx(-16, range, 8)).toBe(0)
     expect(secToPx(0, range, 8)).toBe(128)
+  })
+})
+
+describe('dragTimeSec', () => {
+  it('converts the drag distance to seconds and snaps to the step', () => {
+    expect(dragTimeSec(10, 50, 8, 1, -16, 600)).toBe(16)
+    expect(dragTimeSec(10, -20, 8, 1, -16, 600)).toBe(8)
+    expect(dragTimeSec(12.5, 3, 8, 1, -16, 600)).toBe(13)
+    expect(dragTimeSec(10, 10, 8, 0.1, -16, 600)).toBe(11.3)
+  })
+
+  it('stays within the allowed range', () => {
+    expect(dragTimeSec(-10, -400, 8, 1, -16, 600)).toBe(-16)
+    expect(dragTimeSec(590, 400, 8, 1, -16, 600)).toBe(600)
+  })
+
+  it('never returns -0', () => {
+    expect(Object.is(dragTimeSec(1, -8, 8, 1, -16, 600), 0)).toBe(true)
+    expect(Object.is(dragTimeSec(0.4, -6, 8, 1, -16, 600), 0)).toBe(true)
   })
 })
 

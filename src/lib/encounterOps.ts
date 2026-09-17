@@ -136,6 +136,19 @@ export function updateSkillEntry(
   }))
 }
 
+/** Changes only the time of an entry, e.g. after dragging it on the timeline. */
+export function moveSkillEntry(
+  encounter: Encounter,
+  playerId: string,
+  id: string,
+  timeSec: number,
+): Encounter {
+  return updatePlayer(encounter, playerId, (p) => ({
+    ...p,
+    entries: sortByTime(p.entries.map((e) => (e.id === id ? { ...e, timeSec } : e))),
+  }))
+}
+
 export function removeSkillEntry(encounter: Encounter, playerId: string, id: string): Encounter {
   return updatePlayer(encounter, playerId, (p) => ({
     ...p,

@@ -18,6 +18,7 @@ import {
   countInvalidSkillEntries,
   createEncounter,
   latestUsedSec,
+  moveSkillEntry,
   removeBossAction,
   removePlayer,
   removeSkillEntry,
@@ -56,6 +57,8 @@ function App() {
   const [editor, setEditor] = useState<Editor>(null)
   const [bossCollapsed, setBossCollapsed] = useState(false)
   const [collapsedPlayerIds, setCollapsedPlayerIds] = useState<ReadonlySet<string>>(new Set())
+  // Locked players' skills cannot be dragged on the timeline.
+  const [lockedPlayerIds, setLockedPlayerIds] = useState<ReadonlySet<string>>(new Set())
 
   const selected = encounters.find((e) => e.id === selectedId) ?? encounters[0]
 
@@ -63,13 +66,14 @@ function App() {
     selected !== undefined &&
     selected.players.length > 0 &&
     selected.players.every((p) => collapsedPlayerIds.has(p.id))
+  const toggleIn = (prev: ReadonlySet<string>, id: string) => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return next
+  }
   const togglePlayerCollapsed = (playerId: string) => {
-    setCollapsedPlayerIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(playerId)) next.delete(playerId)
-      else next.add(playerId)
-      return next
-    })
+    setCollapsedPlayerIds((prev) => toggleIn(prev, playerId))
   }
 
   const bossEditor = editor?.target === 'boss' ? editor.state : null
@@ -256,6 +260,13 @@ function App() {
               editor?.target === 'player' && editor.state.mode === 'edit' ? editor.state.id : null
             }
             onSkillEntryClick={(playerId, id) => setPlayerEditor(playerId)({ mode: 'edit', id })}
+            onSkillEntryMove={(playerId, id, timeSec) =>
+              updateEncounter(selected.id, (e) => moveSkillEntry(e, playerId, id, timeSec))
+            }
+            lockedPlayerIds={lockedPlayerIds}
+            onTogglePlayerLock={(playerId) =>
+              setLockedPlayerIds((prev) => toggleIn(prev, playerId))
+            }
           />
 
           <BossActionTable

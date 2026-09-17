@@ -10,6 +10,7 @@ import {
   createEncounter,
   formatCastLength,
   latestUsedSec,
+  moveSkillEntry,
   removeBossAction,
   removePlayer,
   removeSkillEntry,
@@ -253,5 +254,20 @@ describe('setPlayerJob', () => {
       { id: 'b', timeSec: 2, label: '死鬥' },
       { id: 'c', timeSec: 3, label: '自訂' },
     ])
+  })
+})
+
+describe('moveSkillEntry', () => {
+  it('changes only the time of one entry and keeps entries sorted', () => {
+    const base = emptyEncounter()
+    const playerId = base.players[0].id
+    let encounter = addSkillEntry(base, playerId, { timeSec: 10, label: 'A', skillId: 'x' }, 'a')
+    encounter = addSkillEntry(encounter, playerId, { timeSec: 20, label: 'B' }, 'b')
+    const moved = moveSkillEntry(encounter, playerId, 'a', 30)
+    expect(moved.players[0].entries).toEqual([
+      { id: 'b', timeSec: 20, label: 'B' },
+      { id: 'a', timeSec: 30, label: 'A', skillId: 'x' },
+    ])
+    expect(moved.bossActions).toBe(encounter.bossActions)
   })
 })

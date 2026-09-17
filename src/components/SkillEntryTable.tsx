@@ -128,7 +128,8 @@ export function SkillEntryTable({
               if (editor?.mode === 'edit' && editor.id === entry.id) {
                 return (
                   <SkillEntryForm
-                    key={entry.id}
+                    // Reload the form when the entry is dragged on the timeline.
+                    key={`${entry.id}@${entry.timeSec}`}
                     rowId={rowId(entry.id)}
                     initial={entry}
                     durationSec={durationSec}
